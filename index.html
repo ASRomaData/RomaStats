@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roma Stats Bot</title>
+<style>
+  :root {
+    --red: #dc2626;
+    --gold: #f59e0b;
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0f0f0;
+    --muted: #888;
+    --green: #22c55e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* HEADER */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border);
+            padding: 14px 20px; display: flex; align-items: center;
+            justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-badge { width: 36px; height: 36px; background: var(--red);
+                border-radius: 50%; display: flex; align-items: center;
+                justify-content: center; font-size: 18px; }
+  .logo-name { font-size: 15px; font-weight: 600; }
+  .logo-sub  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+  .dot.offline { background: var(--muted); }
+
+  /* TABS */
+  .tabs { display: flex; border-bottom: 1px solid var(--border);
+          background: var(--surface); padding: 0 16px; overflow-x: auto; }
+  .tab { padding: 12px 16px; font-size: 13px; color: var(--muted); cursor: pointer;
+         border-bottom: 2px solid transparent; white-space: nowrap; }
+  .tab.active { color: var(--text); border-bottom-color: var(--red); }
+  .tab-content { display: none; padding: 16px; max-width: 600px; margin: 0 auto; }
+  .tab-content.active { display: block; }
+
+  /* MATCH CARD */
+  .match-card { background: var(--surface); border-radius: 16px;
+                border: 1px solid var(--border); padding: 20px; margin-bottom: 14px; }
+  .match-meta { display: flex; justify-content: space-between;
+                font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+  .score-row { display: flex; align-items: center; justify-content: space-between;
+               margin-bottom: 20px; }
+  .team { text-align: center; flex: 1; }
+  .team-name { font-size: 14px; font-weight: 600; }
+  .score-box { font-size: 40px; font-weight: 700; padding: 0 12px;
+               background: var(--surface2); border-radius: 12px;
+               min-width: 90px; text-align: center; }
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+  /* STAT BARS */
+  .stat-row { display: grid; grid-template-columns: 44px 1fr 44px;
+              align-items: center; gap: 8px; margin-bottom: 12px; }
+  .stat-val { font-size: 13px; font-weight: 600; text-align: center; }
+  .stat-center { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .stat-label { font-size: 10px; color: var(--muted); text-align: center; }
+  .bar-wrap { width: 100%; height: 4px; background: var(--border); border-radius: 2px;
+              position: relative; overflow: hidden; }
+  .bar-home { position: absolute; left: 0; top: 0; height: 100%;
+              background: var(--red); border-radius: 2px; transition: width 0.8s ease; }
+  .bar-away { position: absolute; right: 0; top: 0; height: 100%;
+              background: #6366f1; border-radius: 2px; transition: width 0.8s ease; }
+
+  /* METRIC CARDS */
+  .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .metric { background: var(--surface2); border-radius: 12px; padding: 14px; }
+  .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .metric-val { font-size: 22px; font-weight: 700; }
+  .metric-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* PUBLISH TAB */
+  .platform-row { display: flex; align-items: center; justify-content: space-between;
+                  padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .platform-info { display: flex; align-items: center; gap: 12px; }
+  .platform-icon { width: 36px; height: 36px; border-radius: 10px;
+                   display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .platform-name { font-size: 14px; font-weight: 500; }
+  .platform-status { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .pill { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
+  .pill.green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .pill.gray  { background: rgba(255,255,255,0.06); color: var(--muted); }
+
+  .preview-box { background: var(--surface2); border-radius: 12px; padding: 14px;
+                 font-size: 13px; line-height: 1.7; margin: 16px 0;
+                 white-space: pre-wrap; word-break: break-word; }
+  .btn { width: 100%; padding: 13px; border-radius: 12px; border: none;
+         font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+  .btn-primary { background: var(--red); color: white; }
+  .btn-primary:active { opacity: 0.85; }
+  .btn-secondary { background: var(--surface2); color: var(--text);
+                   border: 1px solid var(--border); }
+
+  /* HISTORY */
+  .history-item { display: flex; align-items: center; gap: 12px;
+                  padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .history-icon { width: 32px; height: 32px; border-radius: 50%;
+                  background: rgba(99,102,241,0.15); display: flex;
+                  align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .history-text { flex: 1; font-size: 13px; }
+  .history-time { font-size: 11px; color: var(--muted); }
+
+  /* SETTINGS */
+  .settings-group { margin-bottom: 24px; }
+  .settings-title { font-size: 11px; color: var(--muted); text-transform: uppercase;
+                    letter-spacing: 0.5px; margin-bottom: 12px; }
+  .settings-row { display: flex; align-items: center; justify-content: space-between;
+                  padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .settings-label { font-size: 14px; }
+  .settings-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .input-field { background: var(--surface2); border: 1px solid var(--border);
+                 border-radius: 8px; padding: 8px 12px; color: var(--text);
+                 font-size: 13px; width: 180px; outline: none; }
+  .input-field:focus { border-color: var(--red); }
+
+  /* LOADING */
+  .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+
+  /* LEGEND */
+  .legend { display: flex; gap: 16px; justify-content: center;
+            font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-badge">⚽</div>
+    <div>
+      <div class="logo-name">Roma Stats Bot</div>
+      <div class="logo-sub">Powered by SofaScore + Bluesky</div>
+    </div>
+  </div>
+  <div class="status">
+    <div class="dot" id="status-dot"></div>
+    <span id="status-text">Caricamento...</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('stats')">Ultima partita</div>
+  <div class="tab" onclick="switchTab('publish')">Piattaforme</div>
+  <div class="tab" onclick="switchTab('history')">Cronologia</div>
+  <div class="tab" onclick="switchTab('settings')">Impostazioni</div>
+</div>
+
+<!-- STATS TAB -->
+<div id="tab-stats" class="tab-content active">
+  <div id="stats-loading" class="loading">Caricamento dati partita...</div>
+  <div id="stats-content" style="display:none">
+    <div class="match-card">
+      <div class="match-meta">
+        <span id="tournament">Serie A</span>
+        <span id="match-date">—</span>
+      </div>
+      <div class="score-row">
+        <div class="team"><div class="team-name" id="home-name">—</div></div>
+        <div class="score-box" id="score-display">- : -</div>
+        <div class="team"><div class="team-name" id="away-name">—</div></div>
+      </div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:var(--red)"></span>Casa</span>
+        <span><span class="legend-dot" style="background:#6366f1"></span>Trasferta</span>
+      </div>
+      <div id="stat-bars"></div>
+    </div>
+    <div class="metrics-grid" id="metrics-grid"></div>
+  </div>
+</div>
+
+<!-- PUBLISH TAB -->
+<div id="tab-publish" class="tab-content">
+  <div class="platform-row">
+    <div class="platform-info">
+      <div class="platform-icon" style="background:rgba(0,133,255,0.15)">🦋</div>
+      <div>
+        <div class="platform-name">Bluesky</div>
+        <div class="platform-status" id="bsky-handle">Configura nelle impostazioni</div>
+      </div>
+    </div>
+    <span class="pill green">Attivo</span>
+  </div>
+  <div class="platform-row">
+    <div class="platform-info">
+      <div class="platform-icon" style="background:rgba(225,48,108,0.15)">📸</div>
+      <div>
+        <div class="platform-name">Instagram</div>
+        <div class="platform-status">Graph API — da configurare</div>
+      </div>
+    </div>
+    <span class="pill gray">Prossimamente</span>
+  </div>
+
+  <div style="margin-top:20px; font-size:12px; color:var(--muted); margin-bottom:8px;">
+    Anteprima ultimo post
+  </div>
+  <div class="preview-box" id="preview-text">Nessun dato disponibile</div>
+  <div style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px"
+       id="preview-chars">0 / 300 caratteri</div>
+</div>
+
+<!-- HISTORY TAB -->
+<div id="tab-history" class="tab-content">
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">
+    Gli ultimi post pubblicati automaticamente dal bot.
+  </div>
+  <div id="history-list">
+    <div class="loading">Nessuna cronologia disponibile</div>
+  </div>
+</div>
+
+<!-- SETTINGS TAB -->
+<div id="tab-settings" class="tab-content">
+  <div class="settings-group">
+    <div class="settings-title">Bot</div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Squadra monitorata</div>
+        <div class="settings-sub">ID SofaScore: 2702</div>
+      </div>
+      <span style="font-size:14px;font-weight:600">Roma</span>
+    </div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Frequenza check</div>
+        <div class="settings-sub">GitHub Actions cron</div>
+      </div>
+      <span style="font-size:13px;color:var(--muted)">ogni 15 min</span>
+    </div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Finestra partita</div>
+        <div class="settings-sub">Attivo solo durante le gare</div>
+      </div>
+      <span style="font-size:13px;color:var(--muted)">-1h / +3h</span>
+    </div>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-title">Account Bluesky</div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Handle</div>
+        <div class="settings-sub">Impostato nei GitHub Secrets</div>
+      </div>
+      <span class="pill green">Configurato</span>
+    </div>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-title">Hashtag predefiniti</div>
+    <div class="settings-row">
+      <div style="font-size:12px;color:var(--muted);line-height:1.6">
+        #Roma #SerieA #ASRoma #ForzaRoma #SofaScore
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:8px;padding:14px;background:var(--surface2);border-radius:12px;
+              font-size:12px;color:var(--muted);line-height:1.6">
+    ℹ️ Per modificare le credenziali vai su GitHub → Settings → Secrets and variables →
+    Actions → imposta <strong>BSKY_HANDLE</strong> e <strong>BSKY_PASSWORD</strong>.
+  </div>
+</div>
+
+<script>
+// ----------------------------------------------------------------
+// Carica i dati da dashboard_data.json (generato dal bot Python)
+// ----------------------------------------------------------------
+const HISTORY_KEY = "roma_bot_history";
+
+async function loadData() {
+  try {
+    const res = await fetch("dashboard_data.json?t=" + Date.now());
+    if (!res.ok) throw new Error("File non trovato");
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+function calcBarWidths(home, away) {
+  const h = parseFloat(home) || 0;
+  const a = parseFloat(away) || 0;
+  const total = h + a;
+  if (total === 0) return { hw: 50, aw: 50 };
+  return { hw: Math.round(h / total * 100), aw: Math.round(a / total * 100) };
+}
+
+function renderStats(data) {
+  const m = data.match;
+  const s = data.stats;
+
+  document.getElementById("home-name").textContent    = m.home;
+  document.getElementById("away-name").textContent    = m.away;
+  document.getElementById("score-display").textContent = `${m.h_score} : ${m.a_score}`;
+  document.getElementById("tournament").textContent   = m.tournament || "Serie A";
+  document.getElementById("match-date").textContent   = m.date || "";
+
+  const statDefs = [
+    { label: "Tiri totali",      key: "total_shots" },
+    { label: "In porta",         key: "shots_on_target" },
+    { label: "xG",               key: "expected_goals" },
+    { label: "Possesso %",       key: "ball_possession" },
+    { label: "Passaggi precisi", key: "accurate_passes" },
+    { label: "Falli",            key: "fouls" },
+    { label: "Calci d'angolo",   key: "corner_kicks" },
+  ];
+
+  const barsEl = document.getElementById("stat-bars");
+  barsEl.innerHTML = "";
+  statDefs.forEach(({ label, key }) => {
+    const stat = s[key] || {};
+    const h = stat.home ?? "-";
+    const a = stat.away ?? "-";
+    if (h === "-" && a === "-") return;
+    const { hw, aw } = calcBarWidths(h, a);
+    barsEl.innerHTML += `
+      <div class="stat-row">
+        <div class="stat-val">${h}</div>
+        <div class="stat-center">
+          <div class="stat-label">${label}</div>
+          <div class="bar-wrap">
+            <div class="bar-home" style="width:${hw}%"></div>
+            <div class="bar-away" style="width:${aw}%"></div>
+          </div>
+        </div>
+        <div class="stat-val">${a}</div>
+      </div>`;
+  });
+
+  // Metric cards
+  const hScore = parseInt(m.h_score) || 0;
+  const aScore = parseInt(m.a_score) || 0;
+  let result = "Pareggio";
+  const isHome = m.home.toLowerCase().includes("roma");
+  if (isHome) {
+    result = hScore > aScore ? "Vittoria 🎉" : hScore < aScore ? "Sconfitta" : "Pareggio";
+  } else {
+    result = aScore > hScore ? "Vittoria 🎉" : aScore < hScore ? "Sconfitta" : "Pareggio";
+  }
+
+  const xgH = parseFloat((s.expected_goals || {}).home) || 0;
+  const xgA = parseFloat((s.expected_goals || {}).away) || 0;
+  const xgDiff = (xgH - xgA).toFixed(2);
+
+  document.getElementById("metrics-grid").innerHTML = `
+    <div class="metric">
+      <div class="metric-label">Risultato</div>
+      <div class="metric-val">${result}</div>
+      <div class="metric-sub">${m.h_score}-${m.a_score}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">xG differenza</div>
+      <div class="metric-val">${xgDiff > 0 ? "+" : ""}${xgDiff}</div>
+      <div class="metric-sub">${xgH} vs ${xgA}</div>
+    </div>`;
+
+  document.getElementById("stats-loading").style.display = "none";
+  document.getElementById("stats-content").style.display  = "block";
+
+  // Preview post
+  const preview = data.post_text || "";
+  document.getElementById("preview-text").textContent  = preview;
+  document.getElementById("preview-chars").textContent = `${preview.length} / 300 caratteri`;
+
+  // Stato header
+  document.getElementById("status-dot").className = "dot";
+  document.getElementById("status-text").textContent = "Aggiornato " + m.date;
+
+  // Aggiorna cronologia locale
+  updateHistory(data);
+}
+
+function updateHistory(data) {
+  let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  const exists = history.some(h => h.id === data.match.id);
+  if (!exists) {
+    history.unshift({
+      id:      data.match.id,
+      text:    `${data.match.home} ${data.match.score} ${data.match.away}`,
+      date:    data.match.date,
+      updated: data.last_updated,
+    });
+    history = history.slice(0, 20); // mantieni solo ultimi 20
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  }
+  renderHistory();
+}
+
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  const el = document.getElementById("history-list");
+  if (history.length === 0) {
+    el.innerHTML = '<div class="loading">Nessuna cronologia</div>';
+    return;
+  }
+  el.innerHTML = history.map(h => `
+    <div class="history-item">
+      <div class="history-icon">🦋</div>
+      <div class="history-text">${h.text}</div>
+      <div class="history-time">${h.date}</div>
+    </div>`).join("");
+}
+
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach((t, i) => {
+    const names = ["stats","publish","history","settings"];
+    t.classList.toggle("active", names[i] === name);
+  });
+  document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  if (name === "history") renderHistory();
+}
+
+// Init
+(async () => {
+  const data = await loadData();
+  if (data) {
+    renderStats(data);
+  } else {
+    document.getElementById("stats-loading").textContent =
+      "Nessun dato disponibile. Il bot pubblicherà i dati dopo la prossima partita.";
+    document.getElementById("status-dot").className = "dot offline";
+    document.getElementById("status-text").textContent = "In attesa di dati";
+  }
+  renderHistory();
+})();
+</script>
+</body>
+</html>
