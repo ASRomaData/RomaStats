@@ -1,111 +1,99 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Roma Stats Bot</title>
-<style>
-  :root { --red: #dc2626; --bg: #0f0f0f; --surface: #1a1a1a; --text: #f0f0f0; --muted: #888; --border: rgba(255,255,255,0.08); --green: #22c55e; }
-  body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
-  .card { background: var(--surface); border-radius: 16px; border: 1px solid var(--border); padding: 20px; max-width: 500px; margin: 0 auto; }
-  .score { font-size: 40px; font-weight: bold; text-align: center; margin: 20px 0; }
-  .stat-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
-  .preview { background: #000; padding: 15px; border-radius: 8px; font-size: 13px; white-space: pre-wrap; margin: 20px 0; border: 1px solid #333; }
-  
-  /* BOTTONE */
-  .btn-trigger { width: 100%; padding: 15px; background: var(--red); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
-  .btn-trigger:active { transform: scale(0.98); opacity: 0.8; }
-  .btn-trigger:disabled { background: #444; cursor: not-allowed; }
-  
-  .tabs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
-  .tab { padding: 8px 16px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; }
-  .tab.active { color: var(--red); border-bottom-color: var(--red); }
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roma Stats Bot</title>
+    <style>
+        :root { --red: #dc2626; --bg: #0f0f0f; --surface: #1a1a1a; --text: #f0f0f0; --muted: #888; --border: rgba(255,255,255,0.08); --green: #22c55e; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; }
+        .card { background: var(--surface); border-radius: 16px; border: 1px solid var(--border); padding: 25px; width: 100%; max-width: 450px; }
+        .score { font-size: 48px; font-weight: bold; text-align: center; margin: 20px 0; color: white; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        .preview { background: #000; padding: 15px; border-radius: 8px; font-size: 13px; white-space: pre-wrap; margin: 20px 0; border: 1px solid #333; color: #ccc; }
+        .btn-trigger { width: 100%; padding: 16px; background: var(--red); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; transition: all 0.2s; }
+        .btn-trigger:active { transform: scale(0.97); opacity: 0.8; }
+        .btn-trigger:disabled { background: #444; cursor: not-allowed; }
+        #msg { text-align: center; margin-top: 15px; font-size: 13px; font-weight: 500; }
+    </style>
 </head>
 <body>
 
-<div class="tabs">
-  <div class="tab active" onclick="switchTab('stats')">Partita</div>
-  <div class="tab" onclick="switchTab('actions')">Piattaforme</div>
-</div>
-
-<div id="stats" class="tab-content active">
-  <div class="card">
-    <h2 style="text-align:center" id="match-teams">AS Roma</h2>
+<div class="card">
+    <h2 style="text-align:center; margin-bottom:5px;">AS Roma Bot</h2>
+    <p style="text-align:center; color:var(--muted); font-size:12px; margin-bottom:20px;" id="last-update">Caricamento...</p>
+    
     <div class="score" id="match-score">0 - 0</div>
+    <div id="match-teams" style="text-align:center; font-weight:bold; margin-bottom:25px;">...</div>
+    
     <div id="stats-list"></div>
-  </div>
-</div>
 
-<div id="actions" class="tab-content">
-  <div class="card">
-    <h3>Azioni Bot</h3>
-    <p style="font-size: 12px; color: var(--muted); margin-bottom: 15px;">L'anteprima mostra l'ultimo post caricato:</p>
-    <div class="preview" id="post-text">...</div>
+    <div class="preview" id="post-text">L'anteprima apparirà qui...</div>
     
     <button id="trigger-btn" class="btn-trigger" onclick="triggerBot()">🚀 PUBBLICA ORA SU BLUESKY</button>
-    <div id="msg" style="text-align:center; margin-top:10px; font-size:12px;"></div>
-  </div>
+    <div id="msg"></div>
 </div>
 
 <script>
-// CONFIGURAZIONE (Sostituisci con i tuoi dati!)
+// ==========================================
+// CONFIGURAZIONE - METTI I TUOI DATI QUI!
+// ==========================================
 const GITHUB_USER = "ASRomaData";
 const GITHUB_REPO = "RomaStats";
-const GITHUB_TOKEN = "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"; // ATTENZIONE: vedi nota sotto
+const GITHUB_TOKEN = "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";
+const BRANCH = "main"; // Cambia in "master" se il tuo ramo si chiama così
+// ==========================================
 
 async function loadData() {
-  const r = await fetch('dashboard_data.json?t=' + Date.now());
-  const d = await r.json();
-  if (d.match) {
-    document.getElementById('match-teams').innerText = d.match.home + " vs " + d.match.away;
-    document.getElementById('match-score').innerText = d.match.score;
-    document.getElementById('post-text').innerText = d.post_text;
-    const list = document.getElementById('stats-list');
-    list.innerHTML = "";
-    for (const [k, v] of Object.entries(d.stats)) {
-       list.innerHTML += `<div class="stat-row"><span>${v.home}</span><b>${k}</b><span>${v.away}</span></div>`;
-    }
-  }
+    try {
+        const r = await fetch('dashboard_data.json?t=' + Date.now());
+        const d = await r.json();
+        document.getElementById('last-update').innerText = "Ultimo aggiornamento: " + (d.last_updated || "N/D");
+        document.getElementById('match-teams').innerText = d.match.home + " vs " + d.match.away;
+        document.getElementById('match-score').innerText = d.match.score;
+        document.getElementById('post-text').innerText = d.post_text;
+        
+        const list = document.getElementById('stats-list');
+        list.innerHTML = "";
+        for (const [k, v] of Object.entries(d.stats)) {
+            list.innerHTML += `<div class="stat-row"><span>${v.home}</span><b style="color:var(--muted)">${k}</b><span>${v.away}</span></div>`;
+        }
+    } catch(e) { console.error("Dati non trovati."); }
 }
 
 async function triggerBot() {
-  const btn = document.getElementById('trigger-btn');
-  const msg = document.getElementById('msg');
-  btn.disabled = true;
-  btn.innerText = "ATTENDI...";
-  
-  try {
-    const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/actions/workflows/bot.yml/dispatches`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GITHUB_TOKEN}`,
-        "Accept": "application/vnd.github+json",
-      },
-      body: JSON.stringify({ ref: "main", inputs: { force_run: "true" } })
-    });
+    const btn = document.getElementById('trigger-btn');
+    const msg = document.getElementById('msg');
+    btn.disabled = true;
+    btn.innerText = "CONNESSIONE A GITHUB...";
 
-    if (res.ok) {
-      msg.innerText = "✅ Bot avviato! Tra circa 1 minuto vedrai il post su Bluesky.";
-      msg.style.color = "var(--green)";
-    } else {
-      throw new Error("Errore GitHub");
+    try {
+        const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/actions/workflows/bot.yml/dispatches`;
+        const res = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Authorization": `token ${GITHUB_TOKEN.trim()}`,
+                "Accept": "application/vnd.github.v3+json",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ ref: BRANCH, inputs: { force_run: "true" } })
+        });
+
+        if (res.status === 204 || res.ok) {
+            msg.innerText = "✅ COMANDO INVIATO! Il bot sta scrivendo su Bluesky. Attendi 1 minuto e ricarica.";
+            msg.style.color = "var(--green)";
+        } else {
+            const err = await res.json().catch(() => ({message: "Errore sconosciuto"}));
+            msg.innerText = `❌ Errore ${res.status}: ${err.message}`;
+            msg.style.color = "var(--red)";
+            btn.disabled = false;
+            btn.innerText = "🚀 PUBBLICA ORA SU BLUESKY";
+        }
+    } catch (e) {
+        msg.innerText = "❌ Errore di rete. Controlla il Token.";
+        msg.style.color = "var(--red)";
+        btn.disabled = false;
     }
-  } catch (e) {
-    msg.innerText = "❌ Errore nell'avvio. Controlla il Token.";
-    msg.style.color = "var(--red)";
-    btn.disabled = false;
-    btn.innerText = "🚀 PUBBLICA ORA SU BLUESKY";
-  }
-}
-
-function switchTab(id) {
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  event.currentTarget.classList.add('active');
 }
 
 loadData();
