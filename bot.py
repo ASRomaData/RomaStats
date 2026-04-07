@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from curl_cffi import requests as curl_requests
 from atproto import Client
 
-# Configurazione ambiente
 BSKY_HANDLE = os.environ.get("BSKY_HANDLE", "")
 BSKY_PASSWORD = os.environ.get("BSKY_PASSWORD", "")
 TEAM_ID = 2702 # Roma
@@ -14,7 +13,8 @@ def main():
     
     # Prende l'ultima partita conclusa
     res = curl_requests.get(f"https://api.sofascore.com/api/v1/team/{TEAM_ID}/events/last/0", impersonate="chrome110")
-    if res.status_code != 200: return
+    if res.status_code != 200: 
+        print("Errore SofaScore"); return
     
     events = res.json().get("events", [])
     match = next((e for e in events if e["status"]["type"] == "finished"), None)
@@ -22,8 +22,7 @@ def main():
     if match:
         # Prende statistiche
         s_res = curl_requests.get(f"https://api.sofascore.com/api/v1/event/{match['id']}/statistics", impersonate="chrome110")
-        stats_data = s_res.json().get("statistics", [])
-        stats_all = next((p for p in stats_data if p["period"] == "ALL"), None)
+        stats_all = next((p for p in s_res.json().get("statistics", []) if p["period"] == "ALL"), None)
         
         full_stats = {}
         if stats_all:
@@ -31,26 +30,35 @@ def main():
                 for i in g["statisticsItems"]:
                     full_stats[i["name"]] = {"home": i["home"], "away": i["away"]}
         
-        # Format post
-        post = f"⚽ {match['homeTeam']['name']} {match['homeScore']['display']}-{match['awayScore']['display']} {match['awayTeam']['name']}\n\n"
-        post += f"📊 Statistiche:\nPossesso: {full_stats.get('Ball possession',{}).get('home','?')} - {full_stats.get('Ball possession',{}).get('away','?')}\n"
-        post += f"Tiri: {full_stats.get('Total shots',{}).get('home','?')} - {full_stats.get('Total shots',{}).get('away','?')}\n\n"
-        post += "#Roma #SerieA #SofaScore"
-
-        # Pubblica
-        client = Client()
-        client.login(BSKY_HANDLE, BSKY_PASSWORD)
-        client.send_post(post)
+        # Formattazione Post
+        home, away = match['homeTeam']['name'], match['awayTeam']['name']
+        h_s, a_s = match['homeScore']['display'], match['awayScore']['display']
         
-        # Salva per Vercel
+        post = f"🟡🔴 Match Report: {home} {h_s}-{a_s} {away}\n\n"
+        post += f"⚽ Tiri: {full_stats.get('Total shots',{}).get('home','-')} - {full_stats.get('Total shots',{}).get('away','-')}\n"
+        post += f"⏳ Possesso: {full_stats.get('Ball possession',{}).get('home','-')} - {full_stats.get('Ball possession',{}).get('away','-')}\n\n"
+        post += "#Roma #SerieA #ASRoma #SofaScore"
+
+        # Pubblica su Bluesky
+        if BSKY_HANDLE and BSKY_PASSWORD:
+            client = Client()
+            client.login(BSKY_HANDLE, BSKY_PASSWORD)
+            client.send_post(post)
+            print("✅ Postato su Bluesky")
+        
+        # Salva per la dashboard
         dashboard = {
-            "last_updated": datetime.now().strftime("%H:%M:%S"),
-            "match": {"home": match['homeTeam']['name'], "away": match['awayTeam']['name'], "score": f"{match['homeScore']['display']}-{match['awayScore']['display']}"},
+            "last_updated": datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M:%S UTC"),
+            "match": {"home": home, "away": away, "score": f"{h_s}-{a_s}"},
             "stats": full_stats,
             "post_text": post
         }
-        with open("dashboard_data.json", "w") as f: json.dump(dashboard, f)
-        print("✅ Completato!")
+        with open("dashboard_data.json", "w") as f:
+            json.dump(dashboard, f, indent=2)
+        
+        # Salva ultimo ID per evitare duplicati nei run automatici
+        with open("last_posted.json", "w") as f:
+            json.dump({"last_event_id": str(match['id'])}, f)
 
 if __name__ == "__main__":
     main()
