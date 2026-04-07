@@ -1,0 +1,50 @@
+name: Roma Match Bot
+
+on:
+  schedule:
+    # Gira ogni 15 minuti — il bot stesso decide se è nella finestra di partita
+    # GitHub Actions usa UTC. La Serie A gioca solitamente 12:30, 15:00, 18:00, 20:45 UTC
+    - cron: "*/15 * * * *"
+
+  # Permette di lanciare manualmente dalla tab Actions su GitHub
+  workflow_dispatch:
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    # Permesso di scrivere nel repo (per aggiornare dashboard_data.json e last_posted.json)
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Installa dipendenze
+        run: pip install -r requirements.txt
+
+      - name: Esegui bot
+        env:
+          BSKY_HANDLE:   ${{ secrets.BSKY_HANDLE }}
+          BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
+        run: python bot.py
+
+      - name: Commit aggiornamento dati dashboard
+        run: |
+          git config user.name  "Roma Bot"
+          git config user.email "bot@roma-stats.com"
+          git add dashboard_data.json last_posted.json || true
+          git diff --staged --quiet || git commit -m "📊 Update match data [skip ci]"
+          git push || true
