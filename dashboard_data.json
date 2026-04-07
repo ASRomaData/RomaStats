@@ -1,6 +1,191 @@
 {
-  "last_updated": null,
-  "match": null,
-  "stats": null,
-  "post_text": null
+  "last_updated": "07/04/2026 16:38:19 UTC",
+  "match": {
+    "home": "Milan",
+    "away": "Roma",
+    "score": "1-0"
+  },
+  "stats": {
+    "Ball possession": {
+      "home": "37%",
+      "away": "63%"
+    },
+    "Expected goals": {
+      "home": "3.32",
+      "away": "1.95"
+    },
+    "Big chances": {
+      "home": "6",
+      "away": "1"
+    },
+    "Total shots": {
+      "home": "17",
+      "away": "20"
+    },
+    "Goalkeeper saves": {
+      "home": "7",
+      "away": "6"
+    },
+    "Corner kicks": {
+      "home": "7",
+      "away": "8"
+    },
+    "Fouls": {
+      "home": "12",
+      "away": "13"
+    },
+    "Passes": {
+      "home": "313",
+      "away": "523"
+    },
+    "Tackles": {
+      "home": "11",
+      "away": "22"
+    },
+    "Free kicks": {
+      "home": "13",
+      "away": "11"
+    },
+    "Yellow cards": {
+      "home": "1",
+      "away": "5"
+    },
+    "Shots on target": {
+      "home": "8",
+      "away": "6"
+    },
+    "Hit woodwork": {
+      "home": "1",
+      "away": "0"
+    },
+    "Shots off target": {
+      "home": "7",
+      "away": "10"
+    },
+    "Blocked shots": {
+      "home": "2",
+      "away": "4"
+    },
+    "Shots inside box": {
+      "home": "13",
+      "away": "14"
+    },
+    "Shots outside box": {
+      "home": "4",
+      "away": "6"
+    },
+    "Big chances scored": {
+      "home": "1",
+      "away": "0"
+    },
+    "Big chances missed": {
+      "home": "5",
+      "away": "1"
+    },
+    "Touches in penalty area": {
+      "home": "27",
+      "away": "33"
+    },
+    "Fouled in final third": {
+      "home": "4",
+      "away": "5"
+    },
+    "Offsides": {
+      "home": "2",
+      "away": "1"
+    },
+    "Accurate passes": {
+      "home": "259",
+      "away": "470"
+    },
+    "Throw-ins": {
+      "home": "10",
+      "away": "13"
+    },
+    "Final third entries": {
+      "home": "38",
+      "away": "55"
+    },
+    "Final third phase": {
+      "home": "58/81 (72%)",
+      "away": "151/176 (86%)"
+    },
+    "Long balls": {
+      "home": "16/41 (39%)",
+      "away": "17/38 (45%)"
+    },
+    "Crosses": {
+      "home": "5/14 (36%)",
+      "away": "11/38 (29%)"
+    },
+    "Duels": {
+      "home": "45%",
+      "away": "55%"
+    },
+    "Dispossessed": {
+      "home": "9",
+      "away": "7"
+    },
+    "Ground duels": {
+      "home": "31/66 (47%)",
+      "away": "35/66 (53%)"
+    },
+    "Aerial duels": {
+      "home": "18/42 (43%)",
+      "away": "24/42 (57%)"
+    },
+    "Dribbles": {
+      "home": "9/22 (41%)",
+      "away": "4/8 (50%)"
+    },
+    "Tackles won": {
+      "home": "55%",
+      "away": "55%"
+    },
+    "Total tackles": {
+      "home": "11",
+      "away": "22"
+    },
+    "Interceptions": {
+      "home": "2",
+      "away": "10"
+    },
+    "Recoveries": {
+      "home": "41",
+      "away": "40"
+    },
+    "Clearances": {
+      "home": "36",
+      "away": "22"
+    },
+    "Errors lead to a shot": {
+      "home": "4",
+      "away": "3"
+    },
+    "Total saves": {
+      "home": "7",
+      "away": "6"
+    },
+    "Goals prevented": {
+      "home": "1.40",
+      "away": "0.51"
+    },
+    "Big saves": {
+      "home": "1",
+      "away": "2"
+    },
+    "High claims": {
+      "home": "1",
+      "away": "1"
+    },
+    "Goal kicks": {
+      "home": "13",
+      "away": "8"
+    },
+    "Penalty saves": {
+      "home": "1",
+      "away": "0"
+    }
+  },
+  "post_text": "\ud83d\udfe1\ud83d\udd34 Match Report: Milan 1-0 Roma\n\n\u26bd Tiri: 17 - 20\n\u23f3 Possesso: 37% - 63%\n\n#Roma #SerieA #ASRoma #SofaScore"
 }
