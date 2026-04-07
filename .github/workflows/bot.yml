@@ -2,25 +2,19 @@ name: Roma Match Bot
 
 on:
   schedule:
-    # Gira automaticamente ogni 15 minuti
     - cron: "*/15 * * * *"
-  
-  # Questa è la parte fondamentale per far funzionare il tasto su Vercel
   workflow_dispatch:
     inputs:
       force_run:
-        description: 'Forza invio ultima partita'
+        description: 'Forza invio'
         type: boolean
         default: true
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-
-    # Permessi necessari per aggiornare i file JSON nel tuo repo
     permissions:
       contents: write
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -31,20 +25,19 @@ jobs:
           python-version: "3.11"
 
       - name: Installa dipendenze
-        run: pip install -r requirements.txt
+        run: pip install curl_cffi atproto
 
       - name: Esegui bot
         env:
           BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
           BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
-          # Passa il comando dal tasto Vercel allo script Python
           FORCE_RUN: ${{ github.event.inputs.force_run || 'false' }}
         run: python bot.py
 
-      - name: Commit e Push aggiornamenti
+      - name: Salva modifiche
         run: |
           git config user.name "Roma Bot"
-          git config user.email "bot@roma-stats.com"
+          git config user.email "bot@roma.com"
           git add dashboard_data.json last_posted.json || true
-          git commit -m "Aggiornamento dati [skip ci]" || true
+          git commit -m "Update dashboard [skip ci]" || true
           git push || true
