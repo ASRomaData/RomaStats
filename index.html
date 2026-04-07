@@ -3,263 +3,112 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title id="page-title">Serie A Stats Bot</title>
+<title>Roma Stats Bot</title>
 <style>
-  :root {
-    --red: #dc2626;
-    --gold: #f59e0b;
-    --bg: #0f0f0f;
-    --surface: #1a1a1a;
-    --surface2: #242424;
-    --border: rgba(255,255,255,0.08);
-    --text: #f0f0f0;
-    --muted: #888;
-    --green: #22c55e;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-         background: var(--bg); color: var(--text); min-height: 100vh; }
-
-  /* HEADER */
-  .header { background: var(--surface); border-bottom: 1px solid var(--border);
-            padding: 14px 20px; display: flex; align-items: center;
-            justify-content: space-between; position: sticky; top: 0; z-index: 10; }
-  .logo { display: flex; align-items: center; gap: 10px; }
-  .logo-badge { width: 36px; height: 36px; background: var(--red);
-                border-radius: 50%; display: flex; align-items: center;
-                justify-content: center; font-size: 18px; }
-  .logo-name { font-size: 15px; font-weight: 600; }
-  .logo-sub  { font-size: 11px; color: var(--muted); margin-top: 1px; }
-  .status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
-  .dot.offline { background: var(--muted); }
-
-  /* TABS */
-  .tabs { display: flex; border-bottom: 1px solid var(--border);
-          background: var(--surface); padding: 0 16px; overflow-x: auto; }
-  .tab { padding: 12px 16px; font-size: 13px; color: var(--muted); cursor: pointer;
-         border-bottom: 2px solid transparent; white-space: nowrap; }
-  .tab.active { color: var(--text); border-bottom-color: var(--red); }
-  .tab-content { display: none; padding: 16px; max-width: 600px; margin: 0 auto; }
+  :root { --red: #dc2626; --bg: #0f0f0f; --surface: #1a1a1a; --text: #f0f0f0; --muted: #888; --border: rgba(255,255,255,0.08); --green: #22c55e; }
+  body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+  .card { background: var(--surface); border-radius: 16px; border: 1px solid var(--border); padding: 20px; max-width: 500px; margin: 0 auto; }
+  .score { font-size: 40px; font-weight: bold; text-align: center; margin: 20px 0; }
+  .stat-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
+  .preview { background: #000; padding: 15px; border-radius: 8px; font-size: 13px; white-space: pre-wrap; margin: 20px 0; border: 1px solid #333; }
+  
+  /* BOTTONE */
+  .btn-trigger { width: 100%; padding: 15px; background: var(--red); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
+  .btn-trigger:active { transform: scale(0.98); opacity: 0.8; }
+  .btn-trigger:disabled { background: #444; cursor: not-allowed; }
+  
+  .tabs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
+  .tab { padding: 8px 16px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--red); border-bottom-color: var(--red); }
+  .tab-content { display: none; }
   .tab-content.active { display: block; }
-
-  /* MATCH CARD */
-  .match-card { background: var(--surface); border-radius: 16px;
-                border: 1px solid var(--border); padding: 20px; margin-bottom: 14px; }
-  .match-meta { display: flex; justify-content: space-between;
-                font-size: 11px; color: var(--muted); margin-bottom: 16px; }
-  .score-row { display: flex; align-items: center; justify-content: space-between;
-               margin-bottom: 20px; }
-  .team { text-align: center; flex: 1; }
-  .team-name { font-size: 14px; font-weight: 600; }
-  .score-box { font-size: 40px; font-weight: 700; padding: 0 12px;
-               background: var(--surface2); border-radius: 12px;
-               min-width: 90px; text-align: center; }
-  .divider { height: 1px; background: var(--border); margin: 16px 0; }
-
-  /* STAT BARS */
-  .stat-row { display: grid; grid-template-columns: 44px 1fr 44px;
-              align-items: center; gap: 8px; margin-bottom: 12px; }
-  .stat-val { font-size: 13px; font-weight: 600; text-align: center; }
-  .stat-center { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-  .stat-label { font-size: 10px; color: var(--muted); text-align: center; }
-  .bar-wrap { width: 100%; height: 4px; background: var(--border); border-radius: 2px;
-              position: relative; overflow: hidden; }
-  .bar-home { position: absolute; left: 0; top: 0; height: 100%;
-              background: var(--red); border-radius: 2px; transition: width 0.8s ease; }
-  .bar-away { position: absolute; right: 0; top: 0; height: 100%;
-              background: #6366f1; border-radius: 2px; transition: width 0.8s ease; }
-
-  /* METRIC CARDS */
-  .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .metric { background: var(--surface2); border-radius: 12px; padding: 14px; }
-  .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
-  .metric-val { font-size: 22px; font-weight: 700; }
-  .metric-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-  /* SELECTOR STYLE */
-  .team-select { width: 100%; padding: 12px; background: var(--surface2); 
-                 border: 1px solid var(--border); color: white; border-radius: 10px;
-                 font-size: 15px; outline: none; margin-top: 10px; }
-
-  .preview-box { background: var(--surface2); border-radius: 12px; padding: 14px;
-                 font-size: 13px; line-height: 1.7; margin: 16px 0;
-                 white-space: pre-wrap; word-break: break-word; }
-  .pill { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
-  .pill.green { background: rgba(34,197,94,0.15); color: var(--green); }
-  .pill.gray  { background: rgba(255,255,255,0.06); color: var(--muted); }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="logo">
-    <div class="logo-badge">⚽</div>
-    <div>
-      <div class="logo-name" id="display-team-name">Serie A Stats Bot</div>
-      <div class="logo-sub">Powered by SofaScore + Bluesky</div>
-    </div>
-  </div>
-  <div class="status">
-    <div class="dot" id="status-dot"></div>
-    <span id="status-text">Caricamento...</span>
-  </div>
-</div>
-
 <div class="tabs">
-  <div class="tab active" onclick="switchTab('stats')">Ultima partita</div>
-  <div class="tab" onclick="switchTab('publish')">Piattaforme</div>
-  <div class="tab" onclick="switchTab('history')">Cronologia</div>
-  <div class="tab" onclick="switchTab('settings')">Impostazioni</div>
+  <div class="tab active" onclick="switchTab('stats')">Partita</div>
+  <div class="tab" onclick="switchTab('actions')">Piattaforme</div>
 </div>
 
-<div id="tab-stats" class="tab-content active">
-  <div id="stats-loading" class="loading" style="text-align:center; padding:40px; color:var(--muted)">Caricamento dati partita...</div>
-  <div id="stats-content" style="display:none">
-    <div class="match-card">
-      <div class="match-meta">
-        <span id="tournament">Serie A</span>
-        <span id="match-date">—</span>
-      </div>
-      <div class="score-row">
-        <div class="team"><div class="team-name" id="home-name">—</div></div>
-        <div class="score-box" id="score-display">- : -</div>
-        <div class="team"><div class="team-name" id="away-name">—</div></div>
-      </div>
-      <div id="stat-bars"></div>
-    </div>
-    <div class="metrics-grid" id="metrics-grid"></div>
+<div id="stats" class="tab-content active">
+  <div class="card">
+    <h2 style="text-align:center" id="match-teams">AS Roma</h2>
+    <div class="score" id="match-score">0 - 0</div>
+    <div id="stats-list"></div>
   </div>
 </div>
 
-<div id="tab-publish" class="tab-content">
-  <div class="preview-box" id="preview-text">Nessun dato disponibile</div>
-  <div style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px" id="preview-chars">0 / 300</div>
-</div>
-
-<div id="tab-history" class="tab-content">
-  <div id="history-list"></div>
-</div>
-
-<div id="tab-settings" class="tab-content">
-  <div style="margin-bottom: 24px;">
-    <h3 style="font-size: 14px; color: var(--muted); text-transform: uppercase; margin-bottom: 15px;">Squadra Attiva</h3>
-    <select id="team-selector" class="team-select" onchange="changeTeam()">
-      <option value="2702">Roma</option>
-      <option value="2697">Inter</option>
-      <option value="2687">Juventus</option>
-      <option value="2699">Milan</option>
-      <option value="2714">Napoli</option>
-      <option value="2701">Lazio</option>
-      <option value="2691">Atalanta</option>
-      <option value="2695">Fiorentina</option>
-      <option value="2716">Bologna</option>
-      <option value="2705">Torino</option>
-      <option value="2711">Udinese</option>
-      <option value="2700">Verona</option>
-      <option value="2688">Cagliari</option>
-      <option value="2713">Lecce</option>
-      <option value="2706">Empoli</option>
-      <option value="2685">Genoa</option>
-      <option value="2709">Como</option>
-      <option value="2710">Monza</option>
-      <option value="2712">Parma</option>
-      <option value="2689">Venezia</option>
-    </select>
-    <p style="font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.4;">
-      ⚠️ <strong>Nota bene:</strong> Selezionare una squadra qui cambia solo la visualizzazione dei dati locali. <br>
-      Per far sì che il bot pubblichi i post di un'altra squadra, devi usare il tasto <strong>Run Workflow</strong> su GitHub selezionando la squadra desiderata.
-    </p>
+<div id="actions" class="tab-content">
+  <div class="card">
+    <h3>Azioni Bot</h3>
+    <p style="font-size: 12px; color: var(--muted); margin-bottom: 15px;">L'anteprima mostra l'ultimo post caricato:</p>
+    <div class="preview" id="post-text">...</div>
+    
+    <button id="trigger-btn" class="btn-trigger" onclick="triggerBot()">🚀 PUBBLICA ORA SU BLUESKY</button>
+    <div id="msg" style="text-align:center; margin-top:10px; font-size:12px;"></div>
   </div>
 </div>
 
 <script>
-const HISTORY_KEY = "serie_a_bot_history";
-let currentData = null;
+// CONFIGURAZIONE (Sostituisci con i tuoi dati!)
+const GITHUB_USER = "IL_TUO_NOME_UTENTE_GITHUB";
+const GITHUB_REPO = "IL_NOME_DEL_TUO_REPO";
+const GITHUB_TOKEN = "IL_TOKEN_CHE_HAI_CREATO_PRIMA"; // ATTENZIONE: vedi nota sotto
 
 async function loadData() {
-  try {
-    const res = await fetch("dashboard_data.json?t=" + Date.now());
-    if (!res.ok) throw new Error();
-    return await res.json();
-  } catch (e) { return null; }
-}
-
-function renderStats(data) {
-  if (!data || !data.match) return;
-  
-  const m = data.match;
-  const s = data.stats;
-  
-  // Update header based on team in JSON
-  document.getElementById("display-team-name").textContent = m.homeTeam.name + " Stats Bot";
-  
-  document.getElementById("home-name").textContent = m.homeTeam.name;
-  document.getElementById("away-name").textContent = m.awayTeam.name;
-  document.getElementById("score-display").textContent = `${m.homeScore.display} : ${m.awayScore.display}`;
-  document.getElementById("match-date").textContent = new Date(m.startTimestamp * 1000).toLocaleDateString('it-IT');
-
-  const barsEl = document.getElementById("stat-bars");
-  barsEl.innerHTML = "";
-  
-  // Mappatura statistiche dal formato SofaScore
-  data.stats.forEach(period => {
-    if(period.period === "ALL") {
-      period.groups.forEach(group => {
-        group.statisticsItems.forEach(item => {
-          const h = item.home;
-          const a = item.away;
-          const total = parseFloat(h) + parseFloat(a);
-          const hw = total === 0 ? 50 : (parseFloat(h) / total * 100);
-          const aw = total === 0 ? 50 : (parseFloat(a) / total * 100);
-          
-          barsEl.innerHTML += `
-            <div class="stat-row" style="margin-top:15px">
-              <div class="stat-val">${h}</div>
-              <div class="stat-center">
-                <div class="stat-label">${item.name}</div>
-                <div class="bar-wrap">
-                  <div class="bar-home" style="width:${hw}%"></div>
-                  <div class="bar-away" style="width:${aw}%"></div>
-                </div>
-              </div>
-              <div class="stat-val">${a}</div>
-            </div>`;
-        });
-      });
+  const r = await fetch('dashboard_data.json?t=' + Date.now());
+  const d = await r.json();
+  if (d.match) {
+    document.getElementById('match-teams').innerText = d.match.home + " vs " + d.match.away;
+    document.getElementById('match-score').innerText = d.match.score;
+    document.getElementById('post-text').innerText = d.post_text;
+    const list = document.getElementById('stats-list');
+    list.innerHTML = "";
+    for (const [k, v] of Object.entries(d.stats)) {
+       list.innerHTML += `<div class="stat-row"><span>${v.home}</span><b>${k}</b><span>${v.away}</span></div>`;
     }
-  });
-
-  document.getElementById("preview-text").textContent = data.post_text || "";
-  document.getElementById("status-text").textContent = "Dati aggiornati";
-  document.getElementById("status-dot").className = "dot";
-  document.getElementById("stats-loading").style.display = "none";
-  document.getElementById("stats-content").style.display = "block";
-}
-
-function switchTab(name) {
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
-  event.currentTarget?.classList.add("active") || document.querySelector(`[onclick="switchTab('${name}')"]`).classList.add("active");
-  document.getElementById("tab-" + name).classList.add("active");
-}
-
-function changeTeam() {
-  const sel = document.getElementById("team-selector");
-  const teamName = sel.options[sel.selectedIndex].text;
-  document.getElementById("display-team-name").textContent = teamName + " Stats Bot";
-  // Qui potresti aggiungere logica per filtrare i dati se salvassi più squadre nel JSON
-}
-
-// Init
-(async () => {
-  currentData = await loadData();
-  if (currentData) {
-    renderStats(currentData);
-  } else {
-    document.getElementById("stats-loading").textContent = "In attesa di dati dal bot...";
   }
-})();
+}
+
+async function triggerBot() {
+  const btn = document.getElementById('trigger-btn');
+  const msg = document.getElementById('msg');
+  btn.disabled = true;
+  btn.innerText = "ATTENDI...";
+  
+  try {
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/actions/workflows/bot.yml/dispatches`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GITHUB_TOKEN}`,
+        "Accept": "application/vnd.github+json",
+      },
+      body: JSON.stringify({ ref: "main", inputs: { force_run: "true" } })
+    });
+
+    if (res.ok) {
+      msg.innerText = "✅ Bot avviato! Tra circa 1 minuto vedrai il post su Bluesky.";
+      msg.style.color = "var(--green)";
+    } else {
+      throw new Error("Errore GitHub");
+    }
+  } catch (e) {
+    msg.innerText = "❌ Errore nell'avvio. Controlla il Token.";
+    msg.style.color = "var(--red)";
+    btn.disabled = false;
+    btn.innerText = "🚀 PUBBLICA ORA SU BLUESKY";
+  }
+}
+
+function switchTab(id) {
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+loadData();
 </script>
 </body>
 </html>
