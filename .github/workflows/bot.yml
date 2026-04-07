@@ -1,46 +1,26 @@
-name: Serie A Match Bot
+name: Roma Match Bot
 
 on:
   schedule:
-    - cron: "*/15 * * * *" # Gira ogni 15 min per la Roma (default)
+    # Gira automaticamente ogni 15 minuti
+    - cron: "*/15 * * * *"
+  
+  # Questa è la parte fondamentale per far funzionare il tasto su Vercel
   workflow_dispatch:
     inputs:
-      team_id:
-        description: 'Seleziona Squadra'
-        required: true
-        default: '2702'
-        type: choice
-        options:
-          - '2702' # Roma
-          - '2697' # Inter
-          - '2687' # Juventus
-          - '2699' # Milan
-          - '2714' # Napoli
-          - '2701' # Lazio
-          - '2691' # Atalanta
-          - '2695' # Fiorentina
-          - '2716' # Bologna
-          - '2705' # Torino
-          - '2711' # Udinese
-          - '2700' # Verona
-          - '2688' # Cagliari
-          - '2713' # Lecce
-          - '2706' # Empoli
-          - '2685' # Genoa
-          - '2709' # Como
-          - '2710' # Monza
-          - '2712' # Parma
-          - '2689' # Venezia
       force_run:
-        description: 'Forza invio ultima partita?'
+        description: 'Forza invio ultima partita'
         type: boolean
         default: true
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+
+    # Permessi necessari per aggiornare i file JSON nel tuo repo
     permissions:
       contents: write
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -57,14 +37,14 @@ jobs:
         env:
           BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
           BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
-          TEAM_ID: ${{ github.event.inputs.team_id || '2702' }}
+          # Passa il comando dal tasto Vercel allo script Python
           FORCE_RUN: ${{ github.event.inputs.force_run || 'false' }}
         run: python bot.py
 
-      - name: Commit aggiornamento
+      - name: Commit e Push aggiornamenti
         run: |
-          git config user.name "Bot"
-          git config user.email "bot@stats.com"
+          git config user.name "Roma Bot"
+          git config user.email "bot@roma-stats.com"
           git add dashboard_data.json last_posted.json || true
           git commit -m "Aggiornamento dati [skip ci]" || true
           git push || true
