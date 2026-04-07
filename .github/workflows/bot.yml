@@ -1,22 +1,46 @@
-name: Roma Match Bot
+name: Serie A Match Bot
 
 on:
   schedule:
-    # Gira ogni 15 minuti — il bot stesso decide se è nella finestra di partita
-    # GitHub Actions usa UTC. La Serie A gioca solitamente 12:30, 15:00, 18:00, 20:45 UTC
-    - cron: "*/15 * * * *"
-
-  # Permette di lanciare manualmente dalla tab Actions su GitHub
+    - cron: "*/15 * * * *" # Gira ogni 15 min per la Roma (default)
   workflow_dispatch:
+    inputs:
+      team_id:
+        description: 'Seleziona Squadra'
+        required: true
+        default: '2702'
+        type: choice
+        options:
+          - '2702' # Roma
+          - '2697' # Inter
+          - '2687' # Juventus
+          - '2699' # Milan
+          - '2714' # Napoli
+          - '2701' # Lazio
+          - '2691' # Atalanta
+          - '2695' # Fiorentina
+          - '2716' # Bologna
+          - '2705' # Torino
+          - '2711' # Udinese
+          - '2700' # Verona
+          - '2688' # Cagliari
+          - '2713' # Lecce
+          - '2706' # Empoli
+          - '2685' # Genoa
+          - '2709' # Como
+          - '2710' # Monza
+          - '2712' # Parma
+          - '2689' # Venezia
+      force_run:
+        description: 'Forza invio ultima partita?'
+        type: boolean
+        default: true
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-
-    # Permesso di scrivere nel repo (per aggiornare dashboard_data.json e last_posted.json)
     permissions:
       contents: write
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -26,25 +50,21 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-
       - name: Installa dipendenze
         run: pip install -r requirements.txt
 
       - name: Esegui bot
         env:
-          BSKY_HANDLE:   ${{ secrets.BSKY_HANDLE }}
+          BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
           BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
+          TEAM_ID: ${{ github.event.inputs.team_id || '2702' }}
+          FORCE_RUN: ${{ github.event.inputs.force_run || 'false' }}
         run: python bot.py
 
-      - name: Commit aggiornamento dati dashboard
+      - name: Commit aggiornamento
         run: |
-          git config user.name  "Roma Bot"
-          git config user.email "bot@roma-stats.com"
+          git config user.name "Bot"
+          git config user.email "bot@stats.com"
           git add dashboard_data.json last_posted.json || true
-          git diff --staged --quiet || git commit -m "📊 Update match data [skip ci]"
+          git commit -m "Aggiornamento dati [skip ci]" || true
           git push || true
