@@ -1,102 +1,616 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roma Stats Bot</title>
-    <style>
-        :root { --red: #dc2626; --bg: #0f0f0f; --surface: #1a1a1a; --text: #f0f0f0; --muted: #888; --border: rgba(255,255,255,0.08); --green: #22c55e; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; }
-        .card { background: var(--surface); border-radius: 16px; border: 1px solid var(--border); padding: 25px; width: 100%; max-width: 450px; }
-        .score { font-size: 48px; font-weight: bold; text-align: center; margin: 20px 0; color: white; }
-        .stat-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-        .preview { background: #000; padding: 15px; border-radius: 8px; font-size: 13px; white-space: pre-wrap; margin: 20px 0; border: 1px solid #333; color: #ccc; }
-        .btn-trigger { width: 100%; padding: 16px; background: var(--red); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; transition: all 0.2s; }
-        .btn-trigger:active { transform: scale(0.97); opacity: 0.8; }
-        .btn-trigger:disabled { background: #444; cursor: not-allowed; }
-        #msg { text-align: center; margin-top: 15px; font-size: 13px; font-weight: 500; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Roma Stats Bot</title>
+<style>
+:root {
+  --red: #dc2626; --gold: #f59e0b;
+  --bg: #0f0f0f; --surface: #1a1a1a; --surface2: #242424;
+  --border: rgba(255,255,255,0.08); --text: #f0f0f0; --muted: #888;
+  --green: #22c55e; --blue: #6366f1;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+       background: var(--bg); color: var(--text); min-height: 100vh; }
+
+.header { background: var(--surface); border-bottom: 1px solid var(--border);
+          padding: 14px 20px; display: flex; align-items: center;
+          justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-badge { width: 36px; height: 36px; background: var(--red); border-radius: 50%;
+              display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.logo-name { font-size: 15px; font-weight: 600; }
+.logo-sub  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+       animation: pulse 2s infinite; }
+.dot.offline { background: var(--muted); animation: none; }
+.dot.loading { background: var(--gold); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.tabs { display: flex; border-bottom: 1px solid var(--border);
+        background: var(--surface); padding: 0 16px; overflow-x: auto;
+        scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { padding: 12px 16px; font-size: 13px; color: var(--muted); cursor: pointer;
+       border-bottom: 2px solid transparent; white-space: nowrap; user-select: none; }
+.tab.active { color: var(--text); border-bottom-color: var(--red); }
+.tab-content { display: none; padding: 16px; max-width: 600px; margin: 0 auto; }
+.tab-content.active { display: block; }
+
+.match-card { background: var(--surface); border-radius: 16px;
+              border: 1px solid var(--border); padding: 20px; margin-bottom: 14px; }
+.match-meta { display: flex; justify-content: space-between;
+              font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+.score-row { display: flex; align-items: center; justify-content: space-between;
+             margin-bottom: 20px; }
+.team { text-align: center; flex: 1; }
+.team-name { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.score-box { font-size: 38px; font-weight: 700; padding: 8px 14px;
+             background: var(--surface2); border-radius: 12px;
+             min-width: 100px; text-align: center; flex-shrink: 0; }
+.legend { display: flex; gap: 16px; justify-content: center;
+          font-size: 11px; color: var(--muted); margin-bottom: 14px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%;
+              display: inline-block; margin-right: 4px; vertical-align: middle; }
+
+.stat-row { display: grid; grid-template-columns: 44px 1fr 44px;
+            align-items: center; gap: 8px; margin-bottom: 12px; }
+.stat-val { font-size: 13px; font-weight: 600; text-align: center; }
+.stat-center { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.stat-label { font-size: 10px; color: var(--muted); text-align: center; }
+.bar-wrap { width: 100%; height: 4px; background: var(--border);
+            border-radius: 2px; position: relative; overflow: hidden; }
+.bar-home { position: absolute; left: 0; top: 0; height: 100%;
+            background: var(--red); border-radius: 2px; transition: width .8s ease; }
+.bar-away { position: absolute; right: 0; top: 0; height: 100%;
+            background: var(--blue); border-radius: 2px; transition: width .8s ease; }
+
+.metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+                margin-bottom: 14px; }
+.metric { background: var(--surface); border-radius: 12px; padding: 14px;
+          border: 1px solid var(--border); }
+.metric-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.metric-val { font-size: 22px; font-weight: 700; }
+.metric-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* TRIGGER BUTTON */
+.trigger-card { background: var(--surface); border: 1px solid var(--border);
+                border-radius: 16px; padding: 20px; margin-bottom: 14px; }
+.trigger-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.trigger-sub { font-size: 12px; color: var(--muted); margin-bottom: 16px;
+               line-height: 1.5; }
+.btn { width: 100%; padding: 14px; border-radius: 12px; border: none;
+       font-size: 14px; font-weight: 600; cursor: pointer;
+       transition: opacity .15s, transform .1s; }
+.btn:active { transform: scale(0.98); opacity: .85; }
+.btn-primary { background: var(--red); color: white; }
+.btn-force { background: var(--gold); color: #1a1a1a; margin-top: 10px; }
+.btn-secondary { background: var(--surface2); color: var(--text);
+                 border: 1px solid var(--border); margin-top: 10px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+         background: var(--surface); border: 1px solid var(--border);
+         border-radius: 12px; padding: 12px 20px; font-size: 13px;
+         max-width: calc(100vw - 48px); text-align: center;
+         z-index: 100; opacity: 0; transition: opacity .3s;
+         pointer-events: none; }
+.toast.show { opacity: 1; }
+.toast.success { border-color: var(--green); color: var(--green); }
+.toast.error   { border-color: var(--red);   color: var(--red); }
+.toast.info    { border-color: var(--gold);  color: var(--gold); }
+
+.platform-row { display: flex; align-items: center; justify-content: space-between;
+                padding: 14px 0; border-bottom: 1px solid var(--border); }
+.platform-info { display: flex; align-items: center; gap: 12px; }
+.platform-icon { width: 36px; height: 36px; border-radius: 10px;
+                 display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.platform-name { font-size: 14px; font-weight: 500; }
+.platform-status { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.pill { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
+.pill.green { background: rgba(34,197,94,.15); color: var(--green); }
+.pill.gray  { background: rgba(255,255,255,.06); color: var(--muted); }
+.pill.gold  { background: rgba(245,158,11,.15); color: var(--gold); }
+
+.preview-box { background: var(--surface2); border-radius: 12px; padding: 14px;
+               font-size: 13px; line-height: 1.7; margin: 16px 0;
+               white-space: pre-wrap; word-break: break-word;
+               border: 1px solid var(--border); }
+
+.history-item { display: flex; align-items: center; gap: 12px;
+                padding: 12px 0; border-bottom: 1px solid var(--border); }
+.history-icon { width: 32px; height: 32px; border-radius: 50%;
+                background: rgba(99,102,241,.15); display: flex;
+                align-items: center; justify-content: center;
+                font-size: 14px; flex-shrink: 0; }
+.history-text { flex: 1; font-size: 13px; }
+.history-time { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+.settings-group { margin-bottom: 24px; }
+.settings-title { font-size: 11px; color: var(--muted); text-transform: uppercase;
+                  letter-spacing: .5px; margin-bottom: 12px; }
+.settings-row { display: flex; align-items: center; justify-content: space-between;
+                padding: 12px 0; border-bottom: 1px solid var(--border); }
+.settings-label { font-size: 14px; }
+.settings-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.info-box { background: var(--surface2); border-radius: 12px; padding: 14px;
+            font-size: 12px; color: var(--muted); line-height: 1.6;
+            border: 1px solid var(--border); }
+.info-box code { background: rgba(255,255,255,.08); padding: 1px 5px;
+                 border-radius: 4px; font-size: 11px; }
+
+.loading { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+.spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border);
+           border-top-color: var(--red); border-radius: 50%;
+           animation: spin .7s linear infinite; margin-right: 8px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
 </head>
 <body>
 
-<div class="card">
-    <h2 style="text-align:center; margin-bottom:5px;">AS Roma Bot</h2>
-    <p style="text-align:center; color:var(--muted); font-size:12px; margin-bottom:20px;" id="last-update">Caricamento...</p>
-    
-    <div class="score" id="match-score">0 - 0</div>
-    <div id="match-teams" style="text-align:center; font-weight:bold; margin-bottom:25px;">...</div>
-    
-    <div id="stats-list"></div>
-
-    <div class="preview" id="post-text">L'anteprima apparirà qui...</div>
-    
-    <button id="trigger-btn" class="btn-trigger" onclick="triggerBot()">🚀 PUBBLICA ORA SU BLUESKY</button>
-    <div id="msg"></div>
+<div class="header">
+  <div class="logo">
+    <div class="logo-badge">⚽</div>
+    <div>
+      <div class="logo-name">Roma Stats Bot</div>
+      <div class="logo-sub">SofaScore + Bluesky</div>
+    </div>
+  </div>
+  <div class="status">
+    <div class="dot offline" id="status-dot"></div>
+    <span id="status-text">Caricamento...</span>
+  </div>
 </div>
 
+<div class="tabs">
+  <div class="tab active"  onclick="switchTab('stats')">Ultima partita</div>
+  <div class="tab"         onclick="switchTab('trigger')">Genera</div>
+  <div class="tab"         onclick="switchTab('publish')">Piattaforme</div>
+  <div class="tab"         onclick="switchTab('history')">Cronologia</div>
+  <div class="tab"         onclick="switchTab('settings')">Info</div>
+</div>
+
+<!-- ===== STATS TAB ===== -->
+<div id="tab-stats" class="tab-content active">
+  <div id="stats-loading" class="loading">
+    <span class="spinner"></span>Caricamento dati partita...
+  </div>
+  <div id="stats-content" style="display:none">
+    <div class="match-card">
+      <div class="match-meta">
+        <span id="tournament">—</span>
+        <span id="match-date">—</span>
+      </div>
+      <div class="score-row">
+        <div class="team"><div class="team-name" id="home-name">—</div></div>
+        <div class="score-box" id="score-display">-:-</div>
+        <div class="team"><div class="team-name" id="away-name">—</div></div>
+      </div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:var(--red)"></span>Casa</span>
+        <span><span class="legend-dot" style="background:var(--blue)"></span>Trasferta</span>
+      </div>
+      <div id="stat-bars"></div>
+    </div>
+    <div class="metrics-grid" id="metrics-grid"></div>
+    <button class="btn btn-secondary" onclick="switchTab('trigger')">
+      ⚡ Genera manualmente
+    </button>
+  </div>
+</div>
+
+<!-- ===== TRIGGER TAB ===== -->
+<div id="tab-trigger" class="tab-content">
+  <div class="trigger-card">
+    <div class="trigger-title">🤖 Esecuzione automatica</div>
+    <div class="trigger-sub">
+      Il bot gira ogni 15 minuti e pubblica automaticamente dopo ogni partita della Roma,
+      nella finestra <strong>-1h / +3h</strong> dall'inizio.
+    </div>
+    <button class="btn btn-secondary" id="btn-auto" onclick="triggerBot(false)">
+      ▶ Esegui ora (modalità auto)
+    </button>
+  </div>
+
+  <div class="trigger-card">
+    <div class="trigger-title">🔧 Override manuale</div>
+    <div class="trigger-sub">
+      Ignora la finestra temporale e genera le statistiche dell'ultima partita disponibile.
+      Utile per testare o per rigenerare un post già pubblicato.
+    </div>
+    <button class="btn btn-force" id="btn-force" onclick="triggerBot(true)">
+      ⚡ Genera ora (forza)
+    </button>
+  </div>
+
+  <div class="info-box" style="margin-top:4px">
+    ℹ️ Dopo aver cliccato, GitHub Actions si avvia in ~5 secondi. I dati si aggiornano
+    in <strong>30-60 secondi</strong>. Clicca <strong>"Ricarica dati"</strong> per vedere il risultato.
+  </div>
+  <button class="btn btn-secondary" style="margin-top:14px" onclick="reloadData()">
+    🔄 Ricarica dati dashboard
+  </button>
+
+  <div id="trigger-status" style="margin-top:14px;font-size:13px;
+       color:var(--muted);text-align:center;min-height:20px"></div>
+</div>
+
+<!-- ===== PUBLISH TAB ===== -->
+<div id="tab-publish" class="tab-content">
+  <div class="platform-row">
+    <div class="platform-info">
+      <div class="platform-icon" style="background:rgba(0,133,255,.15)">🦋</div>
+      <div>
+        <div class="platform-name">Bluesky</div>
+        <div class="platform-status" id="bsky-handle-display">Configurato via GitHub Secrets</div>
+      </div>
+    </div>
+    <span class="pill green">Attivo</span>
+  </div>
+  <div class="platform-row">
+    <div class="platform-info">
+      <div class="platform-icon" style="background:rgba(225,48,108,.15)">📸</div>
+      <div>
+        <div class="platform-name">Instagram</div>
+        <div class="platform-status">Graph API — prossimamente</div>
+      </div>
+    </div>
+    <span class="pill gray">Da configurare</span>
+  </div>
+
+  <div style="margin-top:20px;font-size:12px;color:var(--muted);margin-bottom:8px">
+    Anteprima ultimo post pubblicato
+  </div>
+  <div class="preview-box" id="preview-text">Nessun dato disponibile</div>
+  <div style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px"
+       id="preview-chars"></div>
+
+  <div id="last-published" style="margin-top:10px;font-size:12px;
+       color:var(--muted);text-align:center"></div>
+</div>
+
+<!-- ===== HISTORY TAB ===== -->
+<div id="tab-history" class="tab-content">
+  <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
+    Post pubblicati automaticamente dal bot (salvati localmente su questo dispositivo).
+  </div>
+  <div id="history-list">
+    <div class="loading">Nessuna cronologia disponibile</div>
+  </div>
+  <button class="btn btn-secondary" style="margin-top:14px"
+          onclick="clearHistory()">🗑 Cancella cronologia</button>
+</div>
+
+<!-- ===== SETTINGS TAB ===== -->
+<div id="tab-settings" class="tab-content">
+  <div class="settings-group">
+    <div class="settings-title">Bot</div>
+    <div class="settings-row">
+      <div><div class="settings-label">Squadra</div>
+           <div class="settings-sub">ID SofaScore: 2702</div></div>
+      <span style="font-size:14px;font-weight:600">Roma</span>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-label">Frequenza check</div>
+           <div class="settings-sub">GitHub Actions cron</div></div>
+      <span style="font-size:13px;color:var(--muted)">ogni 15 min</span>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-label">Finestra automatica</div>
+           <div class="settings-sub">Attivo solo durante le gare</div></div>
+      <span style="font-size:13px;color:var(--muted)">-1h / +3h</span>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-label">Override manuale</div>
+           <div class="settings-sub">Tab "Genera" nella dashboard</div></div>
+      <span class="pill green">Disponibile</span>
+    </div>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-title">Variabili d'ambiente</div>
+    <div class="info-box">
+      Configura su <strong>GitHub → Settings → Secrets → Actions</strong>:<br><br>
+      <code>BSKY_HANDLE</code> — handle Bluesky (es. nome.bsky.social)<br>
+      <code>BSKY_PASSWORD</code> — App Password Bluesky<br><br>
+      Configura su <strong>Vercel → Settings → Environment Variables</strong>:<br><br>
+      <code>GITHUB_TOKEN</code> — Personal Access Token (scope: repo + workflow)<br>
+      <code>GITHUB_OWNER</code> — il tuo username GitHub<br>
+      <code>GITHUB_REPO</code> — nome del repository
+    </div>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-title">Come creare il GitHub Token</div>
+    <div class="info-box">
+      1. Vai su <strong>github.com → Settings → Developer settings</strong><br>
+      2. <strong>Personal access tokens → Tokens (classic)</strong><br>
+      3. <strong>Generate new token</strong><br>
+      4. Spunta i permessi: <code>repo</code> e <code>workflow</code><br>
+      5. Copia il token e incollalo nella variabile <code>GITHUB_TOKEN</code> su Vercel
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
 <script>
-// ==========================================
-// CONFIGURAZIONE - METTI I TUOI DATI QUI!
-// ==========================================
-const GITHUB_USER = "ASRomaData";
-const GITHUB_REPO = "RomaStats";
-const GITHUB_TOKEN = "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";
-const BRANCH = "main"; // Cambia in "master" se il tuo ramo si chiama così
-// ==========================================
+const HISTORY_KEY = "roma_bot_history_v2";
+let currentData   = null;
 
+// ----------------------------------------------------------------
+// Carica dashboard_data.json dal repo (servito da Vercel)
+// ----------------------------------------------------------------
 async function loadData() {
-    try {
-        const r = await fetch('dashboard_data.json?t=' + Date.now());
-        const d = await r.json();
-        document.getElementById('last-update').innerText = "Ultimo aggiornamento: " + (d.last_updated || "N/D");
-        document.getElementById('match-teams').innerText = d.match.home + " vs " + d.match.away;
-        document.getElementById('match-score').innerText = d.match.score;
-        document.getElementById('post-text').innerText = d.post_text;
-        
-        const list = document.getElementById('stats-list');
-        list.innerHTML = "";
-        for (const [k, v] of Object.entries(d.stats)) {
-            list.innerHTML += `<div class="stat-row"><span>${v.home}</span><b style="color:var(--muted)">${k}</b><span>${v.away}</span></div>`;
-        }
-    } catch(e) { console.error("Dati non trovati."); }
+  try {
+    const res = await fetch("dashboard_data.json?t=" + Date.now());
+    if (!res.ok) throw new Error("not found");
+    const data = await res.json();
+    if (!data.match) throw new Error("empty");
+    return data;
+  } catch {
+    return null;
+  }
 }
 
-async function triggerBot() {
-    const btn = document.getElementById('trigger-btn');
-    const msg = document.getElementById('msg');
-    btn.disabled = true;
-    btn.innerText = "CONNESSIONE A GITHUB...";
+async function reloadData() {
+  showToast("🔄 Ricaricamento dati...", "info");
+  document.getElementById("status-dot").className = "dot loading";
+  document.getElementById("status-text").textContent = "Aggiornamento...";
+  const data = await loadData();
+  if (data) {
+    currentData = data;
+    renderStats(data);
+    showToast("✅ Dati aggiornati!", "success");
+  } else {
+    showToast("⚠️ Nessun dato disponibile", "error");
+    document.getElementById("status-dot").className = "dot offline";
+    document.getElementById("status-text").textContent = "Nessun dato";
+  }
+}
 
-    try {
-        const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/actions/workflows/bot.yml/dispatches`;
-        const res = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Authorization": `token ${GITHUB_TOKEN.trim()}`,
-                "Accept": "application/vnd.github.v3+json",
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ ref: BRANCH, inputs: { force_run: "true" } })
-        });
+// ----------------------------------------------------------------
+// Render statistiche
+// ----------------------------------------------------------------
+function calcBars(h, a) {
+  const hv = parseFloat(h) || 0, av = parseFloat(a) || 0;
+  const tot = hv + av;
+  return tot === 0 ? {hw:50,aw:50} : {hw:Math.round(hv/tot*100), aw:Math.round(av/tot*100)};
+}
 
-        if (res.status === 204 || res.ok) {
-            msg.innerText = "✅ COMANDO INVIATO! Il bot sta scrivendo su Bluesky. Attendi 1 minuto e ricarica.";
-            msg.style.color = "var(--green)";
-        } else {
-            const err = await res.json().catch(() => ({message: "Errore sconosciuto"}));
-            msg.innerText = `❌ Errore ${res.status}: ${err.message}`;
-            msg.style.color = "var(--red)";
-            btn.disabled = false;
-            btn.innerText = "🚀 PUBBLICA ORA SU BLUESKY";
-        }
-    } catch (e) {
-        msg.innerText = "❌ Errore di rete. Controlla il Token.";
-        msg.style.color = "var(--red)";
-        btn.disabled = false;
+function renderStats(data) {
+  const m = data.match, s = data.stats;
+
+  document.getElementById("home-name").textContent     = m.home;
+  document.getElementById("away-name").textContent     = m.away;
+  document.getElementById("score-display").textContent = `${m.h_score} : ${m.a_score}`;
+  document.getElementById("tournament").textContent    = m.tournament || "Serie A";
+  document.getElementById("match-date").textContent    = m.date || "";
+
+  const defs = [
+    {label:"Tiri totali",      key:"total_shots"},
+    {label:"In porta",         key:"shots_on_target"},
+    {label:"xG",               key:"expected_goals"},
+    {label:"Possesso %",       key:"ball_possession"},
+    {label:"Passaggi precisi", key:"accurate_passes"},
+    {label:"Falli",            key:"fouls"},
+    {label:"Calci d'angolo",   key:"corner_kicks"},
+  ];
+
+  const barsEl = document.getElementById("stat-bars");
+  barsEl.innerHTML = "";
+  defs.forEach(({label, key}) => {
+    const stat = s[key] || {};
+    const h = stat.home ?? "-", a = stat.away ?? "-";
+    if (h === "-" && a === "-") return;
+    const {hw, aw} = calcBars(h, a);
+    barsEl.innerHTML += `
+      <div class="stat-row">
+        <div class="stat-val">${h}</div>
+        <div class="stat-center">
+          <div class="stat-label">${label}</div>
+          <div class="bar-wrap">
+            <div class="bar-home" style="width:${hw}%"></div>
+            <div class="bar-away" style="width:${aw}%"></div>
+          </div>
+        </div>
+        <div class="stat-val">${a}</div>
+      </div>`;
+  });
+
+  const hs = parseInt(m.h_score)||0, as_ = parseInt(m.a_score)||0;
+  const isHome = m.home.toLowerCase().includes("roma");
+  const romaSc = isHome ? hs : as_, oppSc = isHome ? as_ : hs;
+  const result = romaSc > oppSc ? "Vittoria 🎉" : romaSc < oppSc ? "Sconfitta" : "Pareggio";
+
+  const xgH = parseFloat((s.expected_goals||{}).home)||0;
+  const xgA = parseFloat((s.expected_goals||{}).away)||0;
+  const xgD = (xgH-xgA).toFixed(2);
+
+  document.getElementById("metrics-grid").innerHTML = `
+    <div class="metric">
+      <div class="metric-label">Risultato</div>
+      <div class="metric-val">${result}</div>
+      <div class="metric-sub">${m.h_score}-${m.a_score}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">xG differenza</div>
+      <div class="metric-val">${xgD>0?"+":""}${xgD}</div>
+      <div class="metric-sub">${xgH} vs ${xgA}</div>
+    </div>`;
+
+  // Preview
+  const preview = data.post_text || "";
+  document.getElementById("preview-text").textContent  = preview;
+  document.getElementById("preview-chars").textContent = `${preview.length} / 300 caratteri`;
+
+  // Published info
+  const pubEl = document.getElementById("last-published");
+  if (data.published) {
+    pubEl.textContent = "✅ Pubblicato su Bluesky" + (data.force_mode ? " (manuale)" : " (automatico)");
+    pubEl.style.color = "var(--green)";
+  } else {
+    pubEl.textContent = "⚠️ Non ancora pubblicato";
+    pubEl.style.color = "var(--muted)";
+  }
+
+  // Status header
+  const now = new Date(data.last_updated);
+  const ago = Math.round((Date.now() - now) / 60000);
+  document.getElementById("status-dot").className = "dot";
+  document.getElementById("status-text").textContent =
+    ago < 60 ? `${ago} min fa` : m.date;
+
+  document.getElementById("stats-loading").style.display = "none";
+  document.getElementById("stats-content").style.display  = "block";
+
+  updateHistory(data);
+}
+
+// ----------------------------------------------------------------
+// TRIGGER — chiama /api/trigger che avvia GitHub Actions
+// ----------------------------------------------------------------
+async function triggerBot(force) {
+  const btnId  = force ? "btn-force" : "btn-auto";
+  const btn    = document.getElementById(btnId);
+  const status = document.getElementById("trigger-status");
+
+  btn.disabled = true;
+  btn.textContent = "⏳ Avvio in corso...";
+  status.textContent = "";
+
+  showToast("⏳ Avvio workflow GitHub Actions...", "info");
+
+  try {
+    const res = await fetch("/api/trigger", {
+      method:  "POST",
+      headers: {"Content-Type": "application/json"},
+      body:    JSON.stringify({force: force ? "true" : "false"})
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      showToast("✅ " + data.message, "success");
+      status.innerHTML = `✅ Workflow avviato! <br>
+        <span style="color:var(--muted)">
+          Attendi 30-60 secondi poi clicca "Ricarica dati".
+        </span>`;
+      status.style.color = "var(--green)";
+
+      // Auto-ricarica dopo 50 secondi
+      setTimeout(() => {
+        reloadData();
+        status.innerHTML += "<br>🔄 Ricaricamento automatico...";
+      }, 50000);
+
+    } else {
+      showToast("❌ " + (data.error || "Errore sconosciuto"), "error");
+      status.textContent = "❌ " + (data.error || "Errore");
+      status.style.color = "var(--red)";
     }
+  } catch (e) {
+    showToast("❌ Errore di rete: " + e.message, "error");
+    status.textContent = "❌ Errore di rete. Controlla la connessione.";
+    status.style.color = "var(--red)";
+  }
+
+  // Ripristina bottone dopo 10s
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = force ? "⚡ Genera ora (forza)" : "▶ Esegui ora (modalità auto)";
+  }, 10000);
 }
 
-loadData();
+// ----------------------------------------------------------------
+// History (localStorage)
+// ----------------------------------------------------------------
+function updateHistory(data) {
+  let h = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  if (!h.some(x => x.id === data.match.id)) {
+    h.unshift({
+      id:        data.match.id,
+      text:      `${data.match.home} ${data.match.score} ${data.match.away}`,
+      date:      data.match.date,
+      published: data.published,
+      force:     data.force_mode,
+    });
+    h = h.slice(0, 30);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
+  }
+}
+
+function renderHistory() {
+  const h  = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  const el = document.getElementById("history-list");
+  if (!h.length) {
+    el.innerHTML = '<div class="loading">Nessuna cronologia</div>';
+    return;
+  }
+  el.innerHTML = h.map(x => `
+    <div class="history-item">
+      <div class="history-icon">${x.published ? "🦋" : "📊"}</div>
+      <div>
+        <div class="history-text">${x.text}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">
+          ${x.published ? "Pubblicato" : "Solo stats"}
+          ${x.force ? " · manuale" : " · auto"}
+        </div>
+      </div>
+      <div class="history-time">${x.date}</div>
+    </div>`).join("");
+}
+
+function clearHistory() {
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
+  showToast("🗑 Cronologia cancellata", "info");
+}
+
+// ----------------------------------------------------------------
+// Toast
+// ----------------------------------------------------------------
+let toastTimer;
+function showToast(msg, type="info") {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className   = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 4000);
+}
+
+// ----------------------------------------------------------------
+// Tab switching
+// ----------------------------------------------------------------
+function switchTab(name) {
+  const names = ["stats","trigger","publish","history","settings"];
+  document.querySelectorAll(".tab").forEach((t,i) =>
+    t.classList.toggle("active", names[i] === name));
+  document.querySelectorAll(".tab-content").forEach(c =>
+    c.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  if (name === "history") renderHistory();
+}
+
+// ----------------------------------------------------------------
+// Init
+// ----------------------------------------------------------------
+(async () => {
+  const data = await loadData();
+  if (data) {
+    currentData = data;
+    renderStats(data);
+  } else {
+    document.getElementById("stats-loading").textContent =
+      "Nessun dato disponibile. Clicca \"Genera\" per generare le statistiche.";
+    document.getElementById("status-dot").className = "dot offline";
+    document.getElementById("status-text").textContent = "Nessun dato";
+  }
+  renderHistory();
+})();
 </script>
 </body>
 </html>

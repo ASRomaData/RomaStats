@@ -1,0 +1,25 @@
+{
+  "functions": {
+    "api/trigger.py": {
+      "runtime": "python3.9",
+      "maxDuration": 10
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/trigger",
+      "dest": "/api/trigger.py"
+    },
+    {
+      "src": "/dashboard_data.json",
+      "dest": "/dashboard_data.json",
+      "headers": {
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
+}
