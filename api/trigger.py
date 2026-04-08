@@ -4,7 +4,6 @@ import urllib.request
 import urllib.error
 from http.server import BaseHTTPRequestHandler
 
-
 class handler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self):
@@ -20,37 +19,39 @@ class handler(BaseHTTPRequestHandler):
         except Exception:
             payload = {}
 
-        force = "true" if str(payload.get("force", "false")).lower() == "true" else "false"
-
+        force = str(payload.get("force", "false")).lower()
         token = os.environ.get("GITHUB_TOKEN", "")
         owner = os.environ.get("GITHUB_OWNER", "")
         repo  = os.environ.get("GITHUB_REPO", "")
 
         if not all([token, owner, repo]):
-            self._respond(500, {
-                "ok": False,
-                "error": "Variabili mancanti: configura GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO su Vercel."
-            })
+            self._respond(500, {"ok": False,
+                "error": "Configura GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO su Vercel."})
             return
 
-        url  = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/bot.yml/dispatches"
-        data = json.dumps({"ref": "main", "inputs": {"force": force}}).encode()
-        req  = urllib.request.Request(url, data=data, method="POST", headers={
-            "Authorization":        f"Bearer {token}",
-            "Accept":               "application/vnd.github+json",
-            "Content-Type":         "application/json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        })
+        gh_payload = json.dumps({
+            "ref": "main",
+            "inputs": {"force": force}
+        }).encode()
 
+        req = urllib.request.Request(
+            f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/bot.yml/dispatches",
+            data=gh_payload,
+            headers={
+                "Authorization":        f"Bearer {token}",
+                "Accept":               "application/vnd.github+json",
+                "Content-Type":         "application/json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            method="POST"
+        )
         try:
             urllib.request.urlopen(req)
-            self._respond(200, {
-                "ok":      True,
-                "message": "Workflow avviato! Attendi 30-60 secondi e ricarica.",
-                "force":   force == "true"
-            })
+            self._respond(200, {"ok": True,
+                "message": "Workflow avviato! Attendi 30-60 secondi e ricarica."})
         except urllib.error.HTTPError as e:
-            self._respond(e.code, {"ok": False, "error": f"GitHub {e.code}: {e.read().decode()}"})
+            self._respond(e.code, {"ok": False,
+                "error": f"GitHub API error {e.code}: {e.read().decode()}"})
         except Exception as e:
             self._respond(500, {"ok": False, "error": str(e)})
 
