@@ -1,0 +1,66 @@
+name: Roma Match Bot
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Forza generazione (ignora finestra temporale)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Installa dipendenze
+        run: pip install -r requirements.txt
+
+      - name: Esegui bot (auto)
+        if: github.event_name == 'schedule'
+        env:
+          BSKY_HANDLE:   ${{ secrets.BSKY_HANDLE }}
+          BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
+        run: python bot.py
+
+      - name: Esegui bot (manuale)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          BSKY_HANDLE:   ${{ secrets.BSKY_HANDLE }}
+          BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
+        run: |
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            python bot.py --force
+          else
+            python bot.py
+          fi
+
+      - name: Commit dati dashboard
+        run: |
+          git config user.name  "Roma Bot"
+          git config user.email "bot@roma-stats.com"
+          git add dashboard_data.json last_posted.json 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "📊 Update match data [skip ci]"
+          git push || true
