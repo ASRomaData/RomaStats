@@ -6,14 +6,20 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
 
-  const token = process.env.GITHUB_TOKEN;
-  const owner = process.env.GITHUB_OWNER;
-  const repo  = process.env.GITHUB_REPO;
+  // NOTE: GITHUB_TOKEN is reserved by Vercel — use GH_TOKEN, GH_OWNER, GH_REPO instead
+  const token = process.env.GH_TOKEN;
+  const owner = process.env.GH_OWNER;
+  const repo  = process.env.GH_REPO;
 
   if (!token || !owner || !repo) {
+    const missing = [
+      !token && "GH_TOKEN",
+      !owner && "GH_OWNER",
+      !repo  && "GH_REPO",
+    ].filter(Boolean).join(", ");
     return res.status(500).json({
       ok: false,
-      error: "Configura GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO nelle variabili Vercel."
+      error: `Variabili mancanti in Vercel: ${missing}`
     });
   }
 
@@ -24,9 +30,9 @@ module.exports = async function handler(req, res) {
     {
       method: "POST",
       headers: {
-        Authorization:        `Bearer ${token}`,
-        Accept:               "application/vnd.github+json",
-        "Content-Type":       "application/json",
+        Authorization:          `Bearer ${token}`,
+        Accept:                 "application/vnd.github+json",
+        "Content-Type":         "application/json",
         "X-GitHub-Api-Version": "2022-11-28",
       },
       body: JSON.stringify({ ref: "main", inputs: { force } }),
@@ -42,4 +48,4 @@ module.exports = async function handler(req, res) {
 
   const err = await response.text();
   return res.status(response.status).json({ ok: false, error: err });
-}
+};
