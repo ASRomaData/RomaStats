@@ -1,8 +1,54 @@
 {
-  "last_updated": null,
-  "force_mode": false,
-  "published": false,
-  "match": null,
-  "stats": null,
-  "post_text": null
+  "last_updated": "2026-04-09T20:25:58.738743+00:00",
+  "force_mode": true,
+  "published": true,
+  "match": {
+    "id": 13981720,
+    "home": "Inter",
+    "away": "Roma",
+    "score": "5-2",
+    "h_score": 5,
+    "a_score": 2,
+    "date": "05 Apr 2026 18:45",
+    "tournament": "Serie A"
+  },
+  "stats": {
+    "total_shots": {
+      "home": "17",
+      "away": "9"
+    },
+    "shots_on_target": {
+      "home": "9",
+      "away": "3"
+    },
+    "expected_goals": {
+      "home": "1.51",
+      "away": "0.96"
+    },
+    "ball_possession": {
+      "home": "56%",
+      "away": "44%"
+    },
+    "accurate_passes": {
+      "home": "437",
+      "away": "342"
+    },
+    "fouls": {
+      "home": "11",
+      "away": "10"
+    },
+    "corner_kicks": {
+      "home": "7",
+      "away": "4"
+    },
+    "yellow_cards": {
+      "home": "0",
+      "away": "1"
+    },
+    "red_cards": {
+      "home": "-",
+      "away": "-"
+    }
+  },
+  "post_text": "🟡🔴 Match Report: Inter 5-2 Roma\n\n⚽ Tiri (Porta): 17(9) - 9(3)\n📊 xG: 1.51 - 0.96\n⏳ Possesso: 56% - 44%\n🎯 Passaggi: 437 - 342\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
 }
