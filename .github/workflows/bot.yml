@@ -1,11 +1,8 @@
 name: Roma Match Bot
 
 on:
-  # Automatico: ogni 15 minuti
   schedule:
     - cron: "*/15 * * * *"
-
-  # Manuale dalla dashboard GitHub o da Vercel via API
   workflow_dispatch:
     inputs:
       force:
@@ -41,26 +38,26 @@ jobs:
       - name: Installa dipendenze
         run: pip install -r requirements.txt
 
-      - name: Esegui bot (modalità automatica)
+      - name: Esegui bot (auto)
         if: github.event_name == 'schedule'
         env:
           BSKY_HANDLE:   ${{ secrets.BSKY_HANDLE }}
           BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
-        run: python bot.py
+        run: python scripts/bot.py
 
-      - name: Esegui bot (modalità manuale/force)
+      - name: Esegui bot (manuale)
         if: github.event_name == 'workflow_dispatch'
         env:
           BSKY_HANDLE:   ${{ secrets.BSKY_HANDLE }}
           BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
         run: |
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
-            python bot.py --force
+            python scripts/bot.py --force
           else
-            python bot.py
+            python scripts/bot.py
           fi
 
-      - name: Commit aggiornamento dati dashboard
+      - name: Commit dati dashboard
         run: |
           git config user.name  "Roma Bot"
           git config user.email "bot@roma-stats.com"
