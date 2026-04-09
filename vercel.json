@@ -1,11 +1,10 @@
 {
-  "rewrites": [
-    { "source": "/api/trigger", "destination": "/api/trigger.py" }
-  ],
   "headers": [
     {
       "source": "/dashboard_data.json",
-      "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
     }
   ]
 }
