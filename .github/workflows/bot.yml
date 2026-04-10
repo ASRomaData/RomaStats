@@ -41,20 +41,24 @@ jobs:
       - name: Esegui bot (auto)
         if: github.event_name == 'schedule'
         env:
-          BSKY_HANDLE:   ${{ secrets.BSKY_HANDLE }}
-          BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
-        run: python scripts/bot.py
+          BSKY_HANDLE:      ${{ secrets.BSKY_HANDLE }}
+          BSKY_PASSWORD:    ${{ secrets.BSKY_PASSWORD }}
+          IG_USER_ID:       ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN:  ${{ secrets.IG_ACCESS_TOKEN }}
+        run: python bot.py
 
       - name: Esegui bot (manuale)
         if: github.event_name == 'workflow_dispatch'
         env:
-          BSKY_HANDLE:   ${{ secrets.BSKY_HANDLE }}
-          BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
+          BSKY_HANDLE:      ${{ secrets.BSKY_HANDLE }}
+          BSKY_PASSWORD:    ${{ secrets.BSKY_PASSWORD }}
+          IG_USER_ID:       ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN:  ${{ secrets.IG_ACCESS_TOKEN }}
         run: |
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
-            python scripts/bot.py --force
+            python bot.py --force
           else
-            python scripts/bot.py
+            python bot.py
           fi
 
       - name: Commit dati dashboard
