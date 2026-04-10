@@ -6,7 +6,6 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
 
-  // NOTE: GITHUB_TOKEN is reserved by Vercel — use GH_TOKEN, GH_OWNER, GH_REPO instead
   const token = process.env.GH_TOKEN;
   const owner = process.env.GH_OWNER;
   const repo  = process.env.GH_REPO;
@@ -17,13 +16,12 @@ module.exports = async function handler(req, res) {
       !owner && "GH_OWNER",
       !repo  && "GH_REPO",
     ].filter(Boolean).join(", ");
-    return res.status(500).json({
-      ok: false,
-      error: `Variabili mancanti in Vercel: ${missing}`
-    });
+    return res.status(500).json({ ok: false, error: `Variabili mancanti in Vercel: ${missing}` });
   }
 
-  const force = req.body?.force === "true" ? "true" : "false";
+  // Support both old {force:"true"} and new {mode:"force"|"halftime"|"auto"}
+  let mode = req.body?.mode || "auto";
+  if (req.body?.force === "true") mode = "force";   // backward compat
 
   const response = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/actions/workflows/bot.yml/dispatches`,
@@ -35,14 +33,15 @@ module.exports = async function handler(req, res) {
         "Content-Type":         "application/json",
         "X-GitHub-Api-Version": "2022-11-28",
       },
-      body: JSON.stringify({ ref: "main", inputs: { force } }),
+      body: JSON.stringify({ ref: "main", inputs: { mode } }),
     }
   );
 
   if (response.ok || response.status === 204) {
+    const labels = { force: "forzata", halftime: "intervallo", auto: "automatica" };
     return res.status(200).json({
       ok: true,
-      message: "Workflow avviato! Attendi 30-60 secondi e ricarica."
+      message: `Workflow avviato (modalità ${labels[mode] || mode})! Attendi 30-60 secondi e ricarica.`
     });
   }
 
