@@ -2,17 +2,19 @@ name: Roma Match Bot
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/15 * * * *"   # full-time check every 15 min
+    - cron: "*/5 * * * *"    # halftime check every 5 min (more frequent during match)
   workflow_dispatch:
     inputs:
-      force:
-        description: "Forza generazione (ignora finestra temporale)"
+      mode:
+        description: "Modalità di esecuzione"
         required: false
-        default: "false"
+        default: "auto"
         type: choice
         options:
-          - "false"
-          - "true"
+          - "auto"
+          - "force"
+          - "halftime"
 
 jobs:
   run-bot:
@@ -38,14 +40,16 @@ jobs:
       - name: Installa dipendenze
         run: pip install -r requirements.txt
 
-      - name: Esegui bot (auto)
+      - name: Esegui bot (schedule — auto)
         if: github.event_name == 'schedule'
         env:
           BSKY_HANDLE:      ${{ secrets.BSKY_HANDLE }}
           BSKY_PASSWORD:    ${{ secrets.BSKY_PASSWORD }}
           IG_USER_ID:       ${{ secrets.IG_USER_ID }}
           IG_ACCESS_TOKEN:  ${{ secrets.IG_ACCESS_TOKEN }}
-        run: python bot.py
+        run: |
+          python bot.py
+          python bot.py --halftime
 
       - name: Esegui bot (manuale)
         if: github.event_name == 'workflow_dispatch'
@@ -55,8 +59,11 @@ jobs:
           IG_USER_ID:       ${{ secrets.IG_USER_ID }}
           IG_ACCESS_TOKEN:  ${{ secrets.IG_ACCESS_TOKEN }}
         run: |
-          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+          MODE="${{ github.event.inputs.mode }}"
+          if [ "$MODE" = "force" ]; then
             python bot.py --force
+          elif [ "$MODE" = "halftime" ]; then
+            python bot.py --halftime
           else
             python bot.py
           fi
