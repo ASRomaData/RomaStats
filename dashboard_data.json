@@ -1,50 +1,50 @@
 {
-  "last_updated": "2026-04-10T20:27:18.618945+00:00",
-  "force_mode": true,
+  "last_updated": "2026-04-10T20:45:15.382347+00:00",
+  "force_mode": false,
   "halftime_mode": false,
   "published": true,
   "published_ig": false,
   "match": {
-    "id": 13981720,
-    "home": "Inter",
-    "away": "Roma",
-    "score": "5-2",
-    "h_score": 5,
-    "a_score": 2,
-    "date": "05 Apr 2026 18:45",
+    "id": 13981742,
+    "home": "Roma",
+    "away": "Pisa",
+    "score": "3-0",
+    "h_score": 3,
+    "a_score": 0,
+    "date": "10 Apr 2026 18:45",
     "tournament": "Serie A"
   },
   "stats": {
     "total_shots": {
-      "home": "17",
+      "home": "8",
       "away": "9"
     },
     "shots_on_target": {
-      "home": "9",
-      "away": "3"
+      "home": "3",
+      "away": "5"
     },
     "expected_goals": {
-      "home": "1.51",
-      "away": "0.96"
+      "home": "1.53",
+      "away": "0.95"
     },
     "ball_possession": {
-      "home": "56%",
-      "away": "44%"
+      "home": "59%",
+      "away": "41%"
     },
     "accurate_passes": {
-      "home": "437",
-      "away": "342"
+      "home": "515",
+      "away": "315"
     },
     "fouls": {
       "home": "11",
-      "away": "10"
+      "away": "12"
     },
     "corner_kicks": {
-      "home": "7",
-      "away": "4"
+      "home": "1",
+      "away": "3"
     },
     "yellow_cards": {
-      "home": "0",
+      "home": "1",
       "away": "1"
     },
     "red_cards": {
@@ -52,5 +52,5 @@
       "away": "-"
     }
   },
-  "post_text": "🟡🔴 Match Report: Inter 5-2 Roma\n\n⚽ Tiri (Porta): 17(9) - 9(3)\n📊 xG: 1.51 - 0.96\n⏳ Possesso: 56% - 44%\n🎯 Passaggi: 437 - 342\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
+  "post_text": "🟡🔴 Match Report: Roma 3-0 Pisa\n\n⚽ Tiri (Porta): 8(3) - 9(5)\n📊 xG: 1.53 - 0.95\n⏳ Possesso: 59% - 41%\n🎯 Passaggi: 515 - 315\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
 }
