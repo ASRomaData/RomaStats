@@ -221,8 +221,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       Ignora la finestra temporale e genera le statistiche dell'ultima partita disponibile.
       Utile per testare o per rigenerare un post già pubblicato.
     </div>
-    <button class="btn btn-force" id="btn-force" onclick="triggerBot(true)">
+    <button class="btn btn-force" id="btn-force" onclick="triggerBot('force')">
       ⚡ Genera ora (forza)
+    </button>
+  </div>
+
+  <div class="trigger-card">
+    <div class="trigger-title">⏱ Statistiche 1° Tempo</div>
+    <div class="trigger-sub">
+      Pubblica le statistiche del primo tempo durante una partita in corso all'intervallo.
+      Funziona solo se la Roma sta giocando e siamo all'intervallo.
+    </div>
+    <button class="btn btn-secondary" id="btn-halftime" onclick="triggerBot('halftime')">
+      ⏱ Pubblica stats intervallo
     </button>
   </div>
 
@@ -479,8 +490,11 @@ function renderStats(data) {
 // ----------------------------------------------------------------
 // TRIGGER — chiama /api/trigger che avvia GitHub Actions
 // ----------------------------------------------------------------
-async function triggerBot(force) {
-  const btnId  = force ? "btn-force" : "btn-auto";
+async function triggerBot(mode) {
+  // mode: false/"auto" = auto, true/"force" = force, "halftime" = halftime
+  const isForce    = mode === true || mode === "force";
+  const isHalftime = mode === "halftime";
+  const btnId  = isForce ? "btn-force" : (isHalftime ? "btn-halftime" : "btn-auto");
   const btn    = document.getElementById(btnId);
   const status = document.getElementById("trigger-status");
 
@@ -494,7 +508,7 @@ async function triggerBot(force) {
     const res = await fetch("/api/trigger", {
       method:  "POST",
       headers: {"Content-Type": "application/json"},
-      body:    JSON.stringify({force: force ? "true" : "false"})
+      body:    JSON.stringify({mode: isForce ? "force" : (isHalftime ? "halftime" : "auto")})
     });
     const data = await res.json();
 
@@ -526,7 +540,7 @@ async function triggerBot(force) {
   // Ripristina bottone dopo 10s
   setTimeout(() => {
     btn.disabled = false;
-    btn.textContent = force ? "⚡ Genera ora (forza)" : "▶ Esegui ora (modalità auto)";
+    btn.textContent = isForce ? "⚡ Genera ora (forza)" : (isHalftime ? "⏱ Pubblica stats intervallo" : "▶ Esegui ora (modalità auto)");
   }, 10000);
 }
 

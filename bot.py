@@ -28,7 +28,8 @@ POST_WINDOW_HOURS = 3
 FORCE_MAX_DAYS    = 7
 # ==========================================================
 
-FORCE_MODE = "--force" in sys.argv
+FORCE_MODE    = "--force"    in sys.argv
+HALFTIME_MODE = "--halftime" in sys.argv
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -52,13 +53,21 @@ def safe_request(url):
 def load_last_posted():
     if os.path.exists(POSTED_FILE):
         with open(POSTED_FILE, "r") as f:
-            return json.load(f).get("last_event_id")
-    return None
+            d = json.load(f)
+            return d.get("last_event_id"), d.get("last_halftime_id")
+    return None, None
 
-def save_last_posted(event_id):
+def save_last_posted(event_id, halftime_id=None):
+    existing = {}
+    if os.path.exists(POSTED_FILE):
+        with open(POSTED_FILE, "r") as f:
+            existing = json.load(f)
+    existing["last_event_id"]  = event_id
+    existing["posted_at"]      = datetime.now(timezone.utc).isoformat()
+    if halftime_id:
+        existing["last_halftime_id"] = halftime_id
     with open(POSTED_FILE, "w") as f:
-        json.dump({"last_event_id": event_id,
-                   "posted_at": datetime.now(timezone.utc).isoformat()}, f)
+        json.dump(existing, f)
 
 def find_recent_roma_match(force=False):
     now    = datetime.now(timezone.utc)
@@ -98,6 +107,39 @@ def find_recent_roma_match(force=False):
         time.sleep(1.2)
     return None
 
+def find_halftime_roma_match():
+    """Find a Roma match currently at halftime (status inprogress + period 2 not started)."""
+    now    = datetime.now(timezone.utc)
+    team   = TEAM_NAME.lower()
+
+    for delta in [0]:
+        date_str = now.strftime("%Y-%m-%d")
+        url = f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{date_str}"
+        res = safe_request(url)
+        if not res:
+            return None
+
+        for event in res.json().get("events", []):
+            home   = event.get("homeTeam", {}).get("name", "").lower()
+            away   = event.get("awayTeam", {}).get("name", "").lower()
+            status = event.get("status", {})
+            s_type = status.get("type", "")
+            s_desc = status.get("description", "").lower()
+
+            if team not in home and team not in away:
+                continue
+
+            # SofaScore marks halftime as inprogress with description "HT" or "Halftime"
+            if s_type == "inprogress" and any(k in s_desc for k in ["ht", "half", "interval"]):
+                print(f"  Partita in corso all'intervallo: "
+                      f"{event['homeTeam']['name']} "
+                      f"{event.get('homeScore',{}).get('display','?')}-"
+                      f"{event.get('awayScore',{}).get('display','?')} "
+                      f"{event['awayTeam']['name']}")
+                return event
+
+    return None
+
 def is_match_window_today():
     now    = datetime.now(timezone.utc)
     now_ts = now.timestamp()
@@ -119,34 +161,43 @@ def is_match_window_today():
         time.sleep(0.8)
     return False, None
 
-def get_all_stats(event_id):
+def get_stats_for_period(event_id, period="ALL"):
+    """Get stats for a specific period: ALL, 1ST, 2ND."""
     url = f"https://api.sofascore.com/api/v1/event/{event_id}/statistics"
     res = safe_request(url)
     if not res:
         return {}
-    stats_all = next(
-        (p for p in res.json().get("statistics", []) if p.get("period") == "ALL"), None)
+    target = next(
+        (p for p in res.json().get("statistics", []) if p.get("period") == period), None)
+    if not target:
+        # Fallback: try ALL
+        target = next(
+            (p for p in res.json().get("statistics", []) if p.get("period") == "ALL"), None)
     full_map = {}
-    if stats_all:
-        for group in stats_all.get("groups", []):
+    if target:
+        for group in target.get("groups", []):
             for item in group.get("statisticsItems", []):
                 full_map[item["name"]] = {"home": item.get("home"), "away": item.get("away")}
     return full_map
+
+def get_all_stats(event_id):
+    return get_stats_for_period(event_id, "ALL")
 
 # ----------------------------------------------------------
 # TEXT FORMATTERS
 # ----------------------------------------------------------
 
-def format_post_bluesky(event, stats):
+def format_post_bluesky(event, stats, halftime=False):
     home    = event["homeTeam"]["name"]
     away    = event["awayTeam"]["name"]
     h_score = event.get("homeScore", {}).get("display", 0)
     a_score = event.get("awayScore", {}).get("display", 0)
+    label   = "⏱ Intervallo" if halftime else "🟡🔴 Match Report"
 
     def s(name):
         return stats.get(name, {"home": "-", "away": "-"})
 
-    text = (f"🟡🔴 Match Report: {home} {h_score}-{a_score} {away}\n\n"
+    text = (f"{label}: {home} {h_score}-{a_score} {away}\n\n"
             f"⚽ Tiri (Porta): {s('Total shots')['home']}({s('Shots on target')['home']}) "
             f"- {s('Total shots')['away']}({s('Shots on target')['away']})\n")
     xg_h = s("Expected goals")["home"]
@@ -157,19 +208,19 @@ def format_post_bluesky(event, stats):
              f"{HASHTAGS_BSKY}")
     return text[:300] if len(text) > 300 else text
 
-def format_caption_instagram(event, stats):
-    """Longer caption for Instagram (2200 char limit)."""
+def format_caption_instagram(event, stats, halftime=False):
     home    = event["homeTeam"]["name"]
     away    = event["awayTeam"]["name"]
     h_score = event.get("homeScore", {}).get("display", 0)
     a_score = event.get("awayScore", {}).get("display", 0)
     tourney = event.get("tournament", {}).get("name", "")
+    label   = "⏱ Statistiche 1° Tempo" if halftime else "🟡🔴 Match Report"
 
     def s(name):
         return stats.get(name, {"home": "-", "away": "-"})
 
     lines = [
-        f"🟡🔴 Match Report: {home} {h_score}-{a_score} {away}",
+        f"{label}: {home} {h_score}-{a_score} {away}",
         f"🏆 {tourney}" if tourney else "",
         "",
         f"⚽ Tiri (Porta): {s('Total shots')['home']} ({s('Shots on target')['home']}) "
@@ -182,8 +233,6 @@ def format_caption_instagram(event, stats):
         f"⏳ Possesso: {s('Ball possession')['home']} — {s('Ball possession')['away']}",
         f"🎯 Passaggi acc.: {s('Accurate passes')['home']} — {s('Accurate passes')['away']}",
         f"🟨 Gialli: {s('Yellow cards')['home']} — {s('Yellow cards')['away']}",
-        f"🔴 Rossi: {s('Red cards')['home']} — {s('Red cards')['away']}",
-        f"📐 Corner: {s('Corner kicks')['home']} — {s('Corner kicks')['away']}",
         f"🚫 Falli: {s('Fouls')['home']} — {s('Fouls')['away']}",
         "",
         HASHTAGS_IG,
@@ -191,10 +240,65 @@ def format_caption_instagram(event, stats):
     return "\n".join(l for l in lines if l is not None)
 
 # ----------------------------------------------------------
-# MATCH CARD IMAGE (for Instagram)
+# FETCH LATEST PHOTO FROM @officialasroma
 # ----------------------------------------------------------
 
-def generate_match_card(event, stats, output_path=CARD_FILE):
+def get_officialasroma_latest_photo():
+    """
+    Scrape the latest non-video post image URL from @officialasroma public profile.
+    Returns display_url string or None on failure.
+    """
+    ig_headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+            "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+            "Version/17.0 Mobile/15E148 Safari/604.1"
+        ),
+        "Accept":           "application/json, text/plain, */*",
+        "Accept-Language":  "it-IT,it;q=0.9,en;q=0.8",
+        "x-ig-app-id":      "936619743392459",
+        "Referer":          "https://www.instagram.com/",
+        "Origin":           "https://www.instagram.com",
+    }
+
+    try:
+        res = curl_requests.get(
+            "https://www.instagram.com/api/v1/users/web_profile_info/?username=officialasroma",
+            headers=ig_headers,
+            impersonate="safari_ios17_2",
+            timeout=20,
+        )
+        if res.status_code != 200:
+            print(f"  IG profile status {res.status_code}, fallback to generated card.")
+            return None
+
+        data  = res.json()
+        edges = (data.get("data", {})
+                     .get("user", {})
+                     .get("edge_owner_to_timeline_media", {})
+                     .get("edges", []))
+
+        for edge in edges:
+            node = edge.get("node", {})
+            if node.get("is_video"):
+                continue   # skip videos, Instagram API needs image_url not video
+            url = node.get("display_url")
+            if url:
+                print(f"  @officialasroma latest photo trovata: {url[:60]}...")
+                return url
+
+        print("  Nessuna foto trovata su @officialasroma, fallback.")
+        return None
+
+    except Exception as e:
+        print(f"  Errore scraping @officialasroma: {e}")
+        return None
+
+# ----------------------------------------------------------
+# MATCH CARD IMAGE (fallback when @officialasroma not available)
+# ----------------------------------------------------------
+
+def generate_match_card(event, stats, output_path=CARD_FILE, halftime=False):
     try:
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
@@ -214,10 +318,9 @@ def generate_match_card(event, stats, output_path=CARD_FILE):
     h_score = str(event.get("homeScore", {}).get("display", "?"))
     a_score = str(event.get("awayScore", {}).get("display", "?"))
     tourney = event.get("tournament", {}).get("name", "")
-    date_s  = ""
     ts      = event.get("startTimestamp", 0)
-    if ts:
-        date_s = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%d %b %Y")
+    date_s  = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%d %b %Y") if ts else ""
+    header  = "STATISTICHE 1° TEMPO" if halftime else "MATCH REPORT"
 
     def s(name):
         v = stats.get(name, {"home": "-", "away": "-"})
@@ -230,11 +333,9 @@ def generate_match_card(event, stats, output_path=CARD_FILE):
         faces = [
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
             "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-            "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
         ] if bold else [
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-            "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
         ]
         for f in faces:
             try:
@@ -249,55 +350,44 @@ def generate_match_card(event, stats, output_path=CARD_FILE):
     f_label  = font(30, bold=False)
     f_tiny   = font(26, bold=False)
 
-    # Top bar
     draw.rectangle([0, 0, W, 14], fill=RED)
     draw.rectangle([0, 14, W, 20], fill=YELLOW)
 
-    # "MATCH REPORT" header
-    draw.text((W//2, 68), "MATCH REPORT", font=f_header, fill=YELLOW, anchor="mm")
+    draw.text((W//2, 68), header, font=f_header, fill=YELLOW, anchor="mm")
 
-    # Score box
     draw.rounded_rectangle([80, 110, W-80, 350], radius=28, fill=SURF)
-    score_text = f"{home}  {h_score} - {a_score}  {away}"
-    # If names are long, shorten
-    if len(score_text) > 28:
-        h_short = home.split()[-1] if " " in home else home
-        a_short = away.split()[-1] if " " in away else away
-        score_text = f"{h_short}  {h_score} - {a_score}  {a_short}"
-    draw.text((W//2, 215), score_text, font=f_score, fill=WHITE, anchor="mm")
+    h_short = home.split()[-1] if len(home) > 12 else home
+    a_short = away.split()[-1] if len(away) > 12 else away
+    draw.text((W//2, 215), f"{h_short}  {h_score} - {a_score}  {a_short}",
+              font=f_score, fill=WHITE, anchor="mm")
     sub = f"{tourney}  ·  {date_s}" if tourney else date_s
     draw.text((W//2, 318), sub, font=f_tiny, fill=MUTED, anchor="mm")
 
-    # Stats rows
     stat_rows = [
-        ("Tiri (Porta)",    f"{s('Total shots')[0]} ({s('Shots on target')[0]})",
-                            f"{s('Total shots')[1]} ({s('Shots on target')[1]})"),
-        ("xG",              *s("Expected goals")),
-        ("Possesso",        *s("Ball possession")),
-        ("Passaggi acc.",   *s("Accurate passes")),
-        ("Falli",           *s("Fouls")),
-        ("Corner",          *s("Corner kicks")),
+        ("Tiri (Porta)",  f"{s('Total shots')[0]} ({s('Shots on target')[0]})",
+                          f"{s('Total shots')[1]} ({s('Shots on target')[1]})"),
+        ("xG",            *s("Expected goals")),
+        ("Possesso",      *s("Ball possession")),
+        ("Passaggi acc.", *s("Accurate passes")),
+        ("Falli",         *s("Fouls")),
+        ("Corner",        *s("Corner kicks")),
         ("Gialli / Rossi",
             f"{s('Yellow cards')[0]} / {s('Red cards')[0]}",
             f"{s('Yellow cards')[1]} / {s('Red cards')[1]}"),
     ]
-
-    # Filter out rows where both values are "-"
     stat_rows = [(l, h, a) for l, h, a in stat_rows
                  if not (h.strip("-/ ") == "" and a.strip("-/ ") == "")]
 
     row_h = min(78, (H - 420) // max(len(stat_rows), 1))
     y0    = 390
-
     for i, (label, hv, av) in enumerate(stat_rows):
         y    = y0 + i * row_h
         fill = SURF if i % 2 == 0 else BG
         draw.rectangle([60, y, W-60, y+row_h-3], fill=fill)
-        draw.text((W//2,   y + row_h//2), label, font=f_label, fill=MUTED, anchor="mm")
-        draw.text((175,    y + row_h//2), hv,    font=f_stat,  fill=RED,   anchor="mm")
-        draw.text((W-175,  y + row_h//2), av,    font=f_stat,  fill=WHITE, anchor="mm")
+        draw.text((W//2,  y + row_h//2), label, font=f_label, fill=MUTED, anchor="mm")
+        draw.text((175,   y + row_h//2), hv,    font=f_stat,  fill=RED,   anchor="mm")
+        draw.text((W-175, y + row_h//2), av,    font=f_stat,  fill=WHITE, anchor="mm")
 
-    # Footer
     draw.rectangle([0, H-20, W, H-13], fill=YELLOW)
     draw.rectangle([0, H-13, W, H],    fill=RED)
     draw.text((W//2, H-52), "#ASRoma  #SerieA  #ForzaRoma  #SofaScore",
@@ -308,11 +398,11 @@ def generate_match_card(event, stats, output_path=CARD_FILE):
     return True
 
 # ----------------------------------------------------------
-# GITHUB: commit image so it's publicly accessible
+# GITHUB: commit image so it's publicly accessible via raw URL
 # ----------------------------------------------------------
 
 def commit_image_to_github(image_path):
-    """Push match_card.png to the repo via GitHub API. Returns public raw URL."""
+    """Push match_card.png to the repo via GitHub API. Returns clean public raw URL."""
     if not GH_TOKEN_BOT or not GH_REPOSITORY:
         print("GITHUB_TOKEN / GITHUB_REPOSITORY non disponibili, skip commit immagine.")
         return None
@@ -322,28 +412,33 @@ def commit_image_to_github(image_path):
     headers = {
         "Authorization": f"Bearer {GH_TOKEN_BOT}",
         "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
         "X-GitHub-Api-Version": "2022-11-28",
     }
 
     with open(image_path, "rb") as f:
         content_b64 = base64.b64encode(f.read()).decode()
 
-    # Get existing SHA (required for update)
+    # Get existing SHA (required to update an existing file)
     get_res = curl_requests.get(api_url, headers=headers, timeout=15)
     sha     = get_res.json().get("sha") if get_res.status_code == 200 else None
 
-    body = {
+    body = json.dumps({
         "message": "📸 Update match card [skip ci]",
         "content": content_b64,
         "branch":  "main",
-    }
-    if sha:
-        body["sha"] = sha
+        **({"sha": sha} if sha else {}),
+    }).encode()
 
-    put_res = curl_requests.put(api_url, headers=headers, json=body, timeout=30)
+    put_res = curl_requests.put(
+        api_url,
+        headers=headers,
+        data=body,          # use data= with pre-encoded JSON (more reliable than json=)
+        timeout=30,
+    )
     if put_res.status_code in (200, 201):
-        raw_url = (f"https://raw.githubusercontent.com/{owner}/{repo}/main/{image_path}"
-                   f"?t={int(time.time())}")
+        # IMPORTANT: no query params — Instagram Graph API rejects URLs with ?params
+        raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{image_path}"
         print(f"Immagine committata su GitHub: {raw_url}")
         return raw_url
 
@@ -364,9 +459,9 @@ def post_to_instagram(image_url, caption):
     # Step 1 — create media container
     create_res = curl_requests.post(
         f"{base}/{IG_USER_ID}/media",
-        params={
-            "image_url":  image_url,
-            "caption":    caption,
+        data={                          # use data= (form-encoded), not params=
+            "image_url":    image_url,
+            "caption":      caption,
             "access_token": IG_TOKEN,
         },
         timeout=30,
@@ -382,13 +477,13 @@ def post_to_instagram(image_url, caption):
         return False
     print(f"Instagram container creato: {creation_id}")
 
-    # Step 2 — wait for the container to be ready
-    time.sleep(5)
+    # Step 2 — wait for the container to be ready (Meta raccomanda ~5s)
+    time.sleep(6)
 
     # Step 3 — publish
     publish_res = curl_requests.post(
         f"{base}/{IG_USER_ID}/media_publish",
-        params={
+        data={
             "creation_id":  creation_id,
             "access_token": IG_TOKEN,
         },
@@ -427,7 +522,7 @@ def post_to_bluesky(text):
 # ----------------------------------------------------------
 
 def save_dashboard_data(event, stats, post_text, published_bsky,
-                        published_ig, force_mode):
+                        published_ig, force_mode, halftime=False):
     home     = event["homeTeam"]["name"]
     away     = event["awayTeam"]["name"]
     h_score  = event.get("homeScore", {}).get("display", 0)
@@ -438,10 +533,11 @@ def save_dashboard_data(event, stats, post_text, published_bsky,
         return stats.get(name, {"home": "-", "away": "-"})
 
     data = {
-        "last_updated": datetime.now(timezone.utc).isoformat(),
-        "force_mode":   force_mode,
-        "published":    published_bsky,
-        "published_ig": published_ig,
+        "last_updated":  datetime.now(timezone.utc).isoformat(),
+        "force_mode":    force_mode,
+        "halftime_mode": halftime,
+        "published":     published_bsky,
+        "published_ig":  published_ig,
         "match": {
             "id":         event["id"],
             "home":       home,
@@ -472,13 +568,83 @@ def save_dashboard_data(event, stats, post_text, published_bsky,
     print("dashboard_data.json aggiornato")
 
 # ----------------------------------------------------------
+# INSTAGRAM PUBLISH FLOW (shared by full-time and halftime)
+# ----------------------------------------------------------
+
+def publish_to_instagram(match, stats, halftime=False):
+    """
+    Returns True if published.
+    Strategy: try @officialasroma latest photo first, fallback to generated card.
+    """
+    print("\n--- INSTAGRAM ---")
+    ig_caption = format_caption_instagram(match, stats, halftime=halftime)
+    print(f"Caption Instagram ({len(ig_caption)} chars):\n{ig_caption}\n")
+
+    # 1. Try to get the latest photo from @officialasroma
+    image_url = get_officialasroma_latest_photo()
+
+    # 2. Fallback: generate our own match card and commit to GitHub
+    if not image_url:
+        print("  Genero match card locale come fallback...")
+        card_ok = generate_match_card(match, stats, halftime=halftime)
+        if card_ok:
+            image_url = commit_image_to_github(CARD_FILE)
+            if image_url:
+                print("  Attendo propagazione CDN GitHub (10s)...")
+                time.sleep(10)
+
+    if not image_url:
+        print("  Impossibile ottenere image_url, skip Instagram.")
+        return False
+
+    return post_to_instagram(image_url, ig_caption)
+
+# ----------------------------------------------------------
 # MAIN
 # ----------------------------------------------------------
 
 def main():
     print(f"Roma Bot — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
-    print(f"Modalita: {'FORCE (manuale)' if FORCE_MODE else 'AUTO'}")
+    mode_str = "HALFTIME" if HALFTIME_MODE else ("FORCE" if FORCE_MODE else "AUTO")
+    print(f"Modalita: {mode_str}")
 
+    # ---- HALFTIME MODE ----
+    if HALFTIME_MODE:
+        match = find_halftime_roma_match()
+        if not match:
+            print("Nessuna partita Roma attualmente all'intervallo.")
+            return
+
+        stats = get_stats_for_period(match["id"], "1ST")
+        if not stats:
+            print("Statistiche 1° tempo non disponibili.")
+            return
+
+        last_id, last_ht_id = load_last_posted()
+        ht_key = f"ht_{match['id']}"
+        if last_ht_id == ht_key:
+            print("Statistiche intervallo già postate, skip.")
+            return
+
+        bsky_text = format_post_bluesky(match, stats, halftime=True)
+        print(f"\n--- BLUESKY ({len(bsky_text)} chars) ---\n{bsky_text}\n")
+        published_bsky = post_to_bluesky(bsky_text)
+
+        published_ig = False
+        if IG_USER_ID and IG_TOKEN:
+            published_ig = publish_to_instagram(match, stats, halftime=True)
+        else:
+            print("Instagram non configurato, skip.")
+
+        if published_bsky or published_ig:
+            save_last_posted(last_id, halftime_id=ht_key)
+
+        save_dashboard_data(match, stats, bsky_text, published_bsky,
+                            published_ig, False, halftime=True)
+        print("Done.")
+        return
+
+    # ---- AUTO / FORCE MODE ----
     if not FORCE_MODE:
         in_window, upcoming = is_match_window_today()
         if not in_window:
@@ -500,8 +666,8 @@ def main():
         print(msg)
         return
 
-    last_posted_id = load_last_posted()
-    if not FORCE_MODE and str(match.get("id")) == str(last_posted_id):
+    last_id, _ = load_last_posted()
+    if not FORCE_MODE and str(match.get("id")) == str(last_id):
         print("Partita gia' postata, skip.")
         return
 
@@ -510,35 +676,23 @@ def main():
         print("Statistiche non ancora disponibili, riprovo al prossimo run.")
         return
 
-    # --- Bluesky ---
-    bsky_text  = format_post_bluesky(match, stats)
+    # Bluesky
+    bsky_text = format_post_bluesky(match, stats)
     print(f"\n--- BLUESKY ({len(bsky_text)} chars) ---\n{bsky_text}\n")
     published_bsky = post_to_bluesky(bsky_text)
 
-    # --- Instagram ---
+    # Instagram
     published_ig = False
     if IG_USER_ID and IG_TOKEN:
-        print("\n--- INSTAGRAM ---")
-        card_ok  = generate_match_card(match, stats)
-        image_url = None
-        if card_ok:
-            # Commit the image to GitHub so it's publicly accessible via raw URL
-            image_url = commit_image_to_github(CARD_FILE)
-            if image_url:
-                # Brief wait for GitHub CDN to propagate
-                print("Attendo propagazione CDN GitHub (8s)...")
-                time.sleep(8)
-                ig_caption = format_caption_instagram(match, stats)
-                print(f"Caption Instagram ({len(ig_caption)} chars):\n{ig_caption}\n")
-                published_ig = post_to_instagram(image_url, ig_caption)
+        published_ig = publish_to_instagram(match, stats, halftime=False)
     else:
         print("Instagram non configurato (IG_USER_ID / IG_ACCESS_TOKEN mancanti), skip.")
 
-    # --- Save anti-duplicate marker ---
     if (published_bsky or published_ig) and not FORCE_MODE:
         save_last_posted(str(match["id"]))
 
-    save_dashboard_data(match, stats, bsky_text, published_bsky, published_ig, FORCE_MODE)
+    save_dashboard_data(match, stats, bsky_text, published_bsky,
+                        published_ig, FORCE_MODE)
     print("Done.")
 
 if __name__ == "__main__":
