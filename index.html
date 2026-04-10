@@ -156,7 +156,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     <div class="logo-badge">⚽</div>
     <div>
       <div class="logo-name">Roma Stats Bot</div>
-      <div class="logo-sub">SofaScore + Bluesky</div>
+      <div class="logo-sub">SofaScore · Bluesky · Instagram</div>
     </div>
   </div>
   <div class="status">
@@ -255,10 +255,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       <div class="platform-icon" style="background:rgba(225,48,108,.15)">📸</div>
       <div>
         <div class="platform-name">Instagram</div>
-        <div class="platform-status">Graph API — prossimamente</div>
+        <div class="platform-status">Graph API — attivo</div>
       </div>
     </div>
-    <span class="pill gray">Da configurare</span>
+    <span class="pill green">Attivo</span>
   </div>
 
   <div style="margin-top:20px;font-size:12px;color:var(--muted);margin-bottom:8px">
@@ -315,11 +315,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     <div class="info-box">
       Configura su <strong>GitHub → Settings → Secrets → Actions</strong>:<br><br>
       <code>BSKY_HANDLE</code> — handle Bluesky (es. nome.bsky.social)<br>
-      <code>BSKY_PASSWORD</code> — App Password Bluesky<br><br>
+      <code>BSKY_PASSWORD</code> — App Password Bluesky<br>
+      <code>IG_USER_ID</code> — ID numerico account Instagram<br>
+      <code>IG_ACCESS_TOKEN</code> — Token accesso Instagram Graph API<br><br>
       Configura su <strong>Vercel → Settings → Environment Variables</strong>:<br><br>
-      <code>GITHUB_TOKEN</code> — Personal Access Token (scope: repo + workflow)<br>
-      <code>GITHUB_OWNER</code> — il tuo username GitHub<br>
-      <code>GITHUB_REPO</code> — nome del repository
+      <code>GH_TOKEN</code> — Personal Access Token (scope: repo + workflow)<br>
+      <code>GH_OWNER</code> — il tuo username GitHub<br>
+      <code>GH_REPO</code> — nome del repository
     </div>
   </div>
 
@@ -450,8 +452,11 @@ function renderStats(data) {
 
   // Published info
   const pubEl = document.getElementById("last-published");
-  if (data.published) {
-    pubEl.textContent = "✅ Pubblicato su Bluesky" + (data.force_mode ? " (manuale)" : " (automatico)");
+  const platforms = [];
+  if (data.published)    platforms.push("Bluesky");
+  if (data.published_ig) platforms.push("Instagram");
+  if (platforms.length) {
+    pubEl.textContent = "✅ Pubblicato su " + platforms.join(" + ") + (data.force_mode ? " (manuale)" : " (automatico)");
     pubEl.style.color = "var(--green)";
   } else {
     pubEl.textContent = "⚠️ Non ancora pubblicato";
