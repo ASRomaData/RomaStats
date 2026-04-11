@@ -11,8 +11,8 @@ BSKY_HANDLE   = os.environ.get("BSKY_HANDLE", "")
 BSKY_PASSWORD = os.environ.get("BSKY_PASSWORD", "")
 IG_USER_ID    = os.environ.get("IG_USER_ID", "")
 IG_TOKEN      = os.environ.get("IG_ACCESS_TOKEN", "")
-GH_REPOSITORY = os.environ.get("GH_REPOSITORY", "")
-GH_TOKEN_BOT  = os.environ.get("GH_TOKEN", "")
+GH_REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "")
+GH_TOKEN_BOT  = os.environ.get("BOT_GH_TOKEN", "")
 VERCEL_DOMAIN = os.environ.get("VERCEL_DOMAIN", "")   # e.g. roma-bot.vercel.app
 TEAM_NAME         = "roma"
 HASHTAGS_BSKY     = "#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
@@ -186,42 +186,26 @@ def calc_precision(stats, side):
 
 def calc_xgot(stats, side, event):
     """
-    Calcola xGOT (Expected Goals on Target):
-    xGOT (home) = Goal (home) + xG prevented (away)
-    xGOT (away) = Goal (away) + xG prevented (home)
+    xG in porta (home) = gol home + gol prevented away (= saves by away GK).
+    xG in porta (away) = gol away + gol prevented home (= saves by home GK).
+    Tries multiple SofaScore key names for saves.
     """
     try:
-        # 1. Identifica i gol fatti dalla squadra scelta (side)
         if side == "home":
-            goals = int(event.get("homeScore", {}).get("display", 0) or 0)
-            opp_side = "away"  # L'xG prevented da guardare è quello dell'avversario
+            goals     = int(event.get("homeScore", {}).get("display", 0) or 0)
+            opp_side  = "away"
         else:
-            goals = int(event.get("awayScore", {}).get("display", 0) or 0)
-            opp_side = "home"
-
-        # 2. Cerca il valore "Goals prevented" (xG prevented) del portiere avversario
-        prevented = 0
-        # SofaScore usa solitamente "Goals prevented" per l'xG salvato dal portiere
-        keys_to_check = ("Goals prevented", "goalsPrevented", "Goalkeeper saves")
-        
-        for key in keys_to_check:
+            goals     = int(event.get("awayScore", {}).get("display", 0) or 0)
+            opp_side  = "home"
+        saves = 0
+        for key in ("Goalkeeper saves", "Saves", "saves", "goalkeeper saves"):
             raw = stats.get(key, {}).get(opp_side)
             if raw not in (None, "", "-"):
-                # Pulizia stringa (alcuni valori hanno il '+' davanti)
-                clean_val = str(raw).replace('+', '')
-                prevented = float(clean_val)
+                saves = int(float(str(raw)))
                 break
-        
-        # 3. Somma Gol fatti + Gol prevenuti dall'avversario
-        # Usiamo round(1) perché gli xG sono solitamente decimali (es. 1.45)
-        total_xgot = round(float(goals) + prevented, 2)
-        
-        # Restituisci come stringa per il bot, formattata a 2 decimali
-        return "{:.2f}".format(total_xgot)
-
-    except Exception as e:
-        print(f"Errore nel calcolo xGOT per {side}: {e}")
-        return "0.00"
+        return str(goals + saves)
+    except Exception:
+        return "-"
 
 def build_stats_lines(event, stats, halftime=False):
     h_score = event.get("homeScore", {}).get("display", "?")
