@@ -13,6 +13,7 @@ IG_USER_ID    = os.environ.get("IG_USER_ID", "")
 IG_TOKEN      = os.environ.get("IG_ACCESS_TOKEN", "")
 GH_REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "")
 GH_TOKEN_BOT  = os.environ.get("GITHUB_TOKEN", "")
+VERCEL_DOMAIN = os.environ.get("VERCEL_DOMAIN", "")   # e.g. roma-bot.vercel.app
 TEAM_NAME         = "roma"
 HASHTAGS_BSKY     = "#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
 HASHTAGS_IG       = "#Roma #SerieA #ASRoma #ForzaRoma #SofaScore #calcio #football #matchreport"
@@ -221,8 +222,40 @@ def build_stats_lines(event, stats, halftime=False):
     return [l for l in lines if l is not None]
 
 def format_post_bluesky(event, stats, halftime=False):
-    lines = build_stats_lines(event, stats, halftime) + ["", HASHTAGS_BSKY]
-    text = "\n".join(lines)
+    home    = event["homeTeam"]["name"]
+    away    = event["awayTeam"]["name"]
+    h_score = event.get("homeScore", {}).get("display", "?")
+    a_score = event.get("awayScore", {}).get("display", "?")
+    label   = "Statistiche 1T" if halftime else ""
+    prefix  = f"#{home.replace(' ','')}#{away.replace(' ','')} {h_score}:{a_score}"
+    if label:
+        prefix += f" ({label})"
+
+    xgoth = calc_xgot(stats, "home", event)
+    xgota = calc_xgot(stats, "away", event)
+    prech = calc_precision(stats, "home")
+    preca = calc_precision(stats, "away")
+    xgh   = sv(stats, "Expected goals", "home")
+    xga   = sv(stats, "Expected goals", "away")
+    bch   = sv(stats, "Big chances",    "home")
+    bca   = sv(stats, "Big chances",    "away")
+    tch   = sv(stats, "Touches in opposition box", "home")
+    tca   = sv(stats, "Touches in opposition box", "away")
+
+    lines = [
+        prefix,
+        f"Tiri: {sv(stats,'Total shots','home')} - {sv(stats,'Total shots','away')}",
+        f"Tiri nello specchio: {sv(stats,'Shots on target','home')} - {sv(stats,'Shots on target','away')}",
+        f"xG: {xgh} - {xga}" if xgh != "-" else None,
+        f"xG in porta: {xgoth} - {xgota}",
+        f"Possesso: {sv(stats,'Ball possession','home')} - {sv(stats,'Ball possession','away')}",
+        f"Precisione: {prech} - {preca}",
+        f"Tocchi in area avversaria: {tch} - {tca}" if tch != "-" else None,
+        f"Grandi Occasioni: {bch} - {bca}" if bch != "-" else None,
+        "",
+        HASHTAGS_BSKY,
+    ]
+    text = "\n".join(l for l in lines if l is not None)
     return text[:300] if len(text) > 300 else text
 
 def format_caption_instagram(event, stats, halftime=False):
@@ -416,16 +449,28 @@ def publish_to_instagram(match,stats,halftime=False):
     print("\n--- INSTAGRAM ---")
     ig_caption=format_caption_instagram(match,stats,halftime=halftime)
     print(f"Caption ({len(ig_caption)} chars):\n{ig_caption}\n")
-    image_url=get_officialasroma_latest_photo()
-    if not image_url:
-        print("  Genero match card...")
-        if generate_match_card(match,stats,halftime=halftime):
-            image_url=commit_image_to_github(CARD_FILE)
-            if image_url:
-                verify_url_accessible(image_url,retries=3,wait=8)
-    if not image_url:
-        print("  Nessuna image_url, skip Instagram."); return False
-    return post_to_instagram(image_url,ig_caption)
+
+    # Generate card and commit to GitHub → Vercel auto-deploys it as static file
+    if not generate_match_card(match,stats,halftime=halftime):
+        print("  Generazione card fallita, skip Instagram."); return False
+
+    commit_ok = commit_image_to_github(CARD_FILE)
+    if not commit_ok:
+        print("  Commit immagine fallito, skip Instagram."); return False
+
+    # Use Vercel static URL (Vercel auto-redeploys on every git push within ~30s)
+    if VERCEL_DOMAIN:
+        image_url = f"https://{VERCEL_DOMAIN.rstrip('/')}/match_card.png"
+        print(f"  Attendo deploy Vercel (45s)...")
+        time.sleep(45)
+    else:
+        # Fallback: raw GitHub URL (works only if repo is public)
+        image_url = commit_ok
+        print(f"  VERCEL_DOMAIN non impostato, uso raw GitHub URL.")
+        time.sleep(10)
+
+    print(f"  image_url: {image_url}")
+    return post_to_instagram(image_url, ig_caption)
 
 # --- Main ---
 
