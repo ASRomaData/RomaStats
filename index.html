@@ -404,21 +404,41 @@ function renderStats(data) {
   document.getElementById("tournament").textContent    = m.tournament || "Serie A";
   document.getElementById("match-date").textContent    = m.date || "";
 
+  // Compute derived stats
+  const precH = (() => {
+    const acc = parseFloat((s.accurate_passes||{}).home); 
+    const tot = parseFloat((s.total_passes||{}).home);
+    if (!isNaN(acc) && !isNaN(tot) && tot > 0) return Math.round(acc/tot*100)+"%";
+    return (s.passing_precision||{}).home || "-";
+  })();
+  const precA = (() => {
+    const acc = parseFloat((s.accurate_passes||{}).away);
+    const tot = parseFloat((s.total_passes||{}).away);
+    if (!isNaN(acc) && !isNaN(tot) && tot > 0) return Math.round(acc/tot*100)+"%";
+    return (s.passing_precision||{}).away || "-";
+  })();
+  const xgotH = (s.xg_on_target||{}).home || "-";
+  const xgotA = (s.xg_on_target||{}).away || "-";
+
   const defs = [
-    {label:"Tiri totali",      key:"total_shots"},
-    {label:"In porta",         key:"shots_on_target"},
-    {label:"xG",               key:"expected_goals"},
-    {label:"Possesso %",       key:"ball_possession"},
-    {label:"Passaggi precisi", key:"accurate_passes"},
-    {label:"Falli",            key:"fouls"},
-    {label:"Calci d'angolo",   key:"corner_kicks"},
+    {label:"Tiri totali",             key:"total_shots"},
+    {label:"Tiri nello specchio",     key:"shots_on_target"},
+    {label:"xG",                      key:"expected_goals"},
+    {label:"xG in porta",             home: xgotH, away: xgotA},
+    {label:"Possesso %",              key:"ball_possession"},
+    {label:"Precisione passaggi",     home: precH, away: precA},
+    {label:"Grandi Occasioni",        key:"big_chances"},
+    {label:"Falli",                   key:"fouls"},
+    {label:"Calci d'angolo",         key:"corner_kicks"},
+    {label:"Gialli",                  key:"yellow_cards"},
   ];
 
   const barsEl = document.getElementById("stat-bars");
   barsEl.innerHTML = "";
-  defs.forEach(({label, key}) => {
-    const stat = s[key] || {};
-    const h = stat.home ?? "-", a = stat.away ?? "-";
+  defs.forEach(({label, key, home: dHome, away: dAway}) => {
+    const stat = key ? (s[key] || {}) : {};
+    const h = dHome !== undefined ? dHome : (stat.home ?? "-");
+    const a = dAway !== undefined ? dAway : (stat.away ?? "-");
     if (h === "-" && a === "-") return;
     const {hw, aw} = calcBars(h, a);
     barsEl.innerHTML += `
