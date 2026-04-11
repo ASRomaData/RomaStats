@@ -2,8 +2,8 @@ name: Roma Match Bot
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # Controllo ogni 15 min per fine partita
-    - cron: "*/5 * * * *"    # Controllo ogni 5 min durante il match
+    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       mode:
@@ -43,12 +43,12 @@ jobs:
       - name: Esegui bot (schedule — auto)
         if: github.event_name == 'schedule'
         env:
-          BSKY_HANDLE:      ${{ secrets.BSKY_HANDLE }}
-          BSKY_PASSWORD:    ${{ secrets.BSKY_PASSWORD }}
-          IG_USER_ID:       ${{ secrets.IG_USER_ID }}
-          IG_ACCESS_TOKEN:  ${{ secrets.IG_ACCESS_TOKEN }}
-          GH_TOKEN:         ${{ secrets.GH_TOKEN }}
-          VERCEL_DOMAIN:    ${{ secrets.VERCEL_DOMAIN }}
+          BSKY_HANDLE:       ${{ secrets.BSKY_HANDLE }}
+          BSKY_PASSWORD:     ${{ secrets.BSKY_PASSWORD }}
+          IG_USER_ID:        ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN:   ${{ secrets.IG_ACCESS_TOKEN }}
+          VERCEL_DOMAIN:     ${{ secrets.VERCEL_DOMAIN }}
+          GITHUB_TOKEN:      ${{ secrets.GH_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           python bot.py
@@ -57,12 +57,12 @@ jobs:
       - name: Esegui bot (manuale)
         if: github.event_name == 'workflow_dispatch'
         env:
-          BSKY_HANDLE:      ${{ secrets.BSKY_HANDLE }}
-          BSKY_PASSWORD:    ${{ secrets.BSKY_PASSWORD }}
-          IG_USER_ID:       ${{ secrets.IG_USER_ID }}
-          IG_ACCESS_TOKEN:  ${{ secrets.IG_ACCESS_TOKEN }}
-          GH_TOKEN:         ${{ secrets.GH_TOKEN }}
-          VERCEL_DOMAIN:    ${{ secrets.VERCEL_DOMAIN }}
+          BSKY_HANDLE:       ${{ secrets.BSKY_HANDLE }}
+          BSKY_PASSWORD:     ${{ secrets.BSKY_PASSWORD }}
+          IG_USER_ID:        ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN:   ${{ secrets.IG_ACCESS_TOKEN }}
+          VERCEL_DOMAIN:     ${{ secrets.VERCEL_DOMAIN }}
+          GITHUB_TOKEN:      ${{ secrets.GH_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           MODE="${{ github.event.inputs.mode }}"
@@ -74,11 +74,10 @@ jobs:
             python bot.py
           fi
 
-      - name: Commit dati dashboard e immagine
+      - name: Commit dati dashboard + immagine
         run: |
           git config user.name  "Roma Bot"
           git config user.email "bot@roma-stats.com"
-          # Aggiungiamo i file dati e la nuova immagine generata
           git add dashboard_data.json last_posted.json match_card.png 2>/dev/null || true
-          # Eseguiamo il commit solo se ci sono cambiamenti
-          git diff --staged --quiet || (git commit -m "📊 Update match data and card [skip ci]" && git push) || true
+          git diff --staged --quiet || git commit -m "📊 Update match data [skip ci]"
+          git push || true
