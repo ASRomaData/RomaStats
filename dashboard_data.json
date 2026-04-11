@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-04-11T22:53:40.233052+00:00",
+  "last_updated": "2026-04-11T23:05:20.282323+00:00",
   "force_mode": true,
   "halftime_mode": false,
   "published": true,
@@ -28,8 +28,8 @@
       "away": "1.26"
     },
     "xg_on_target": {
-      "home": "1.80",
-      "away": "1.20"
+      "home": "3",
+      "away": "5"
     },
     "ball_possession": {
       "home": "59%",
@@ -64,5 +64,5 @@
       "away": "-"
     }
   },
-  "post_text": "#RomaPisa 3:0\nTiri: 8 - 9\nTiri nello specchio: 3 - 5\nxG: 1.53 - 1.26\nxG in porta: 1.80 - 1.20\nPossesso: 59% - 41%\nPrecisione: 87% - 76%\nGrandi Occasioni: 2 - 1\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
+  "post_text": "#RomaPisa 3:0\nTiri: 8 - 9\nTiri nello specchio: 3 - 5\nxG: 1.53 - 1.26\nxG in porta: 3 - 5\nPossesso: 59% - 41%\nPrecisione: 87% - 76%\nGrandi Occasioni: 2 - 1\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
 }
