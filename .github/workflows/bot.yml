@@ -2,8 +2,8 @@ name: Roma Match Bot
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # full-time check every 15 min
-    - cron: "*/5 * * * *"    # halftime check every 5 min (more frequent during match)
+    - cron: "*/15 * * * *"   # Controllo ogni 15 min per fine partita
+    - cron: "*/5 * * * *"    # Controllo ogni 5 min durante il match
   workflow_dispatch:
     inputs:
       mode:
@@ -47,6 +47,9 @@ jobs:
           BSKY_PASSWORD:    ${{ secrets.BSKY_PASSWORD }}
           IG_USER_ID:       ${{ secrets.IG_USER_ID }}
           IG_ACCESS_TOKEN:  ${{ secrets.IG_ACCESS_TOKEN }}
+          GH_TOKEN:         ${{ secrets.GH_TOKEN }}
+          VERCEL_DOMAIN:    ${{ secrets.VERCEL_DOMAIN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           python bot.py
           python bot.py --halftime
@@ -58,6 +61,9 @@ jobs:
           BSKY_PASSWORD:    ${{ secrets.BSKY_PASSWORD }}
           IG_USER_ID:       ${{ secrets.IG_USER_ID }}
           IG_ACCESS_TOKEN:  ${{ secrets.IG_ACCESS_TOKEN }}
+          GH_TOKEN:         ${{ secrets.GH_TOKEN }}
+          VERCEL_DOMAIN:    ${{ secrets.VERCEL_DOMAIN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           MODE="${{ github.event.inputs.mode }}"
           if [ "$MODE" = "force" ]; then
@@ -68,10 +74,11 @@ jobs:
             python bot.py
           fi
 
-      - name: Commit dati dashboard
+      - name: Commit dati dashboard e immagine
         run: |
           git config user.name  "Roma Bot"
           git config user.email "bot@roma-stats.com"
-          git add dashboard_data.json last_posted.json 2>/dev/null || true
-          git diff --staged --quiet || git commit -m "📊 Update match data [skip ci]"
-          git push || true
+          # Aggiungiamo i file dati e la nuova immagine generata
+          git add dashboard_data.json last_posted.json match_card.png 2>/dev/null || true
+          # Eseguiamo il commit solo se ci sono cambiamenti
+          git diff --staged --quiet || (git commit -m "📊 Update match data and card [skip ci]" && git push) || true
