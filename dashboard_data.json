@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-04-11T08:31:24.546121+00:00",
+  "last_updated": "2026-04-11T08:54:17.273723+00:00",
   "force_mode": true,
   "halftime_mode": false,
   "published": true,
@@ -27,9 +27,21 @@
       "home": "1.53",
       "away": "1.26"
     },
+    "xg_on_target": {
+      "home": "3",
+      "away": "5"
+    },
     "ball_possession": {
       "home": "59%",
       "away": "41%"
+    },
+    "passing_precision": {
+      "home": "513",
+      "away": "313"
+    },
+    "big_chances": {
+      "home": "2",
+      "away": "1"
     },
     "accurate_passes": {
       "home": "513",
@@ -52,5 +64,5 @@
       "away": "-"
     }
   },
-  "post_text": "🟡🔴 Match Report: Roma 3-0 Pisa\n\n⚽ Tiri (Porta): 8(3) - 9(5)\n📊 xG: 1.53 - 1.26\n⏳ Possesso: 59% - 41%\n🎯 Passaggi: 513 - 313\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
+  "post_text": "#Roma#Pisa 3:0\nTiri: 8 - 9\nTiri nello specchio: 3 - 5\nxG: 1.53 - 1.26\nxG in porta: 3 - 5\nPossesso: 59% - 41%\nPrecisione: 513 - 313\nGrandi Occasioni: 2 - 1\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
 }
