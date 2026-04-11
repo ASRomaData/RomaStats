@@ -155,36 +155,73 @@ def sv(stats, name, side):
     return str(v) if v not in (None, "", "-") else "-"
 
 def calc_precision(stats, side):
+    """Accurate passes / Total passes * 100. Tries multiple SofaScore key names."""
     try:
         acc_raw = stats.get("Accurate passes", {}).get(side, "")
-        tot_raw = stats.get("Total passes", {}).get(side, "")
-        # SofaScore sometimes returns "387/450 (86%)" in acc_raw
+        # Case 1: SofaScore returns "387/450 (86%)" format
         if "/" in str(acc_raw):
             parts = str(acc_raw).split("/")
             acc = float(parts[0].strip())
             tot = float(parts[1].strip().split()[0])
-            return f"{round(acc/tot*100)}%"
-        if tot_raw not in (None, "", "-"):
-            acc = float(str(acc_raw).replace("%","").strip())
-            tot = float(str(tot_raw).replace("%","").strip())
+            if tot > 0:
+                return f"{round(acc/tot*100)}%"
+        # Case 2: separate "Total passes" key
+        acc = float(str(acc_raw).replace("%","").strip()) if acc_raw not in ("", None, "-") else None
+        for key in ("Total passes", "Passes", "passes"):
+            tot_raw = stats.get(key, {}).get(side)
+            if tot_raw not in (None, "", "-"):
+                tot = float(str(tot_raw).replace("%","").strip())
+                if tot > 0 and acc is not None:
+                    return f"{round(acc/tot*100)}%"
+        # Case 3: accurate + inaccurate = total
+        inacc_raw = stats.get("Inaccurate passes", {}).get(side)
+        if inacc_raw not in (None, "", "-") and acc is not None:
+            inacc = float(str(inacc_raw).replace("%","").strip())
+            tot = acc + inacc
             if tot > 0:
                 return f"{round(acc/tot*100)}%"
     except Exception:
         pass
-    return sv(stats, "Accurate passes", side)  # fallback: show raw value
+    return "-"
 
 def calc_xgot(stats, side, event):
+    """
+    Calcola xGOT (Expected Goals on Target):
+    xGOT (home) = Goal (home) + xG prevented (away)
+    xGOT (away) = Goal (away) + xG prevented (home)
+    """
     try:
+        # 1. Identifica i gol fatti dalla squadra scelta (side)
         if side == "home":
             goals = int(event.get("homeScore", {}).get("display", 0) or 0)
-            saves_opp = stats.get("Goalkeeper saves", {}).get("away")
+            opp_side = "away"  # L'xG prevented da guardare è quello dell'avversario
         else:
             goals = int(event.get("awayScore", {}).get("display", 0) or 0)
-            saves_opp = stats.get("Goalkeeper saves", {}).get("home")
-        saves = int(saves_opp) if saves_opp not in (None, "-", "") else 0
-        return str(goals + saves)
-    except Exception:
-        return "-"
+            opp_side = "home"
+
+        # 2. Cerca il valore "Goals prevented" (xG prevented) del portiere avversario
+        prevented = 0
+        # SofaScore usa solitamente "Goals prevented" per l'xG salvato dal portiere
+        keys_to_check = ("Goals prevented", "goalsPrevented", "Goalkeeper saves")
+        
+        for key in keys_to_check:
+            raw = stats.get(key, {}).get(opp_side)
+            if raw not in (None, "", "-"):
+                # Pulizia stringa (alcuni valori hanno il '+' davanti)
+                clean_val = str(raw).replace('+', '')
+                prevented = float(clean_val)
+                break
+        
+        # 3. Somma Gol fatti + Gol prevenuti dall'avversario
+        # Usiamo round(1) perché gli xG sono solitamente decimali (es. 1.45)
+        total_xgot = round(float(goals) + prevented, 2)
+        
+        # Restituisci come stringa per il bot, formattata a 2 decimali
+        return "{:.2f}".format(total_xgot)
+
+    except Exception as e:
+        print(f"Errore nel calcolo xGOT per {side}: {e}")
+        return "0.00"
 
 def build_stats_lines(event, stats, halftime=False):
     h_score = event.get("homeScore", {}).get("display", "?")
@@ -227,7 +264,7 @@ def format_post_bluesky(event, stats, halftime=False):
     h_score = event.get("homeScore", {}).get("display", "?")
     a_score = event.get("awayScore", {}).get("display", "?")
     label   = "Statistiche 1T" if halftime else ""
-    prefix  = f"#{home.replace(' ','')}#{away.replace(' ','')} {h_score}:{a_score}"
+    prefix  = f"#{home.replace(' ','')+away.replace(' ','')} {h_score}:{a_score}"
     if label:
         prefix += f" ({label})"
 
@@ -469,7 +506,18 @@ def publish_to_instagram(match,stats,halftime=False):
         print(f"  VERCEL_DOMAIN non impostato, uso raw GitHub URL.")
         time.sleep(10)
 
-    print(f"  image_url: {image_url}")
+    # Verify the URL is publicly reachable before calling Instagram API
+    print(f"  Verifico accessibilità: {image_url}")
+    try:
+        check = curl_requests.head(image_url, timeout=15)
+        print(f"  HEAD status: {check.status_code}")
+        if check.status_code != 200:
+            print(f"  ERRORE: URL non raggiungibile (status {check.status_code}). Instagram richiede URL pubblico.")
+            print(f"  Verifica: 1) VERCEL_DOMAIN è corretto? 2) Il repo è pubblico se usi raw GitHub?")
+            return False
+    except Exception as e:
+        print(f"  ERRORE HEAD request: {e}")
+        return False
     return post_to_instagram(image_url, ig_caption)
 
 # --- Main ---
