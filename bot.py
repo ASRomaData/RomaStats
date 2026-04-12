@@ -483,43 +483,22 @@ def save_dashboard_data(event,stats,post_text,published_bsky,published_ig,force_
 
 # --- IG flow ---
 
-def publish_to_instagram(match,stats,halftime=False):
+def publish_to_instagram(match, stats, halftime=False):
     print("\n--- INSTAGRAM ---")
-    ig_caption=format_caption_instagram(match,stats,halftime=halftime)
+    ig_caption = format_caption_instagram(match, stats, halftime=halftime)
     print(f"Caption ({len(ig_caption)} chars):\n{ig_caption}\n")
 
-    # Generate card and commit to GitHub → Vercel auto-deploys it as static file
-    if not generate_match_card(match,stats,halftime=halftime):
+    if not generate_match_card(match, stats, halftime=halftime):
         print("  Generazione card fallita, skip Instagram."); return False
 
-    commit_ok = commit_image_to_github(CARD_FILE)
-    if not commit_ok:
+    raw_url = commit_image_to_github(CARD_FILE)
+    if not raw_url:
         print("  Commit immagine fallito, skip Instagram."); return False
 
-    # Use Vercel static URL (Vercel auto-redeploys on every git push within ~30s)
-    if VERCEL_DOMAIN:
-        image_url = f"https://{VERCEL_DOMAIN.rstrip('/')}/match_card.png"
-        print(f"  Attendo deploy Vercel (45s)...")
-        time.sleep(45)
-    else:
-        # Fallback: raw GitHub URL (works only if repo is public)
-        image_url = commit_ok
-        print(f"  VERCEL_DOMAIN non impostato, uso raw GitHub URL.")
-        time.sleep(10)
-
-    # Verify the URL is publicly reachable before calling Instagram API
-    print(f"  Verifico accessibilità: {image_url}")
-    try:
-        check = curl_requests.head(image_url, timeout=15)
-        print(f"  HEAD status: {check.status_code}")
-        if check.status_code != 200:
-            print(f"  ERRORE: URL non raggiungibile (status {check.status_code}). Instagram richiede URL pubblico.")
-            print(f"  Verifica: 1) VERCEL_DOMAIN è corretto? 2) Il repo è pubblico se usi raw GitHub?")
-            return False
-    except Exception as e:
-        print(f"  ERRORE HEAD request: {e}")
-        return False
-    return post_to_instagram(image_url, ig_caption)
+    print("  Attendo 15s per propagazione CDN GitHub...")
+    time.sleep(15)
+    print(f"  image_url: {raw_url}")
+    return post_to_instagram(raw_url, ig_caption)
 
 # --- Main ---
 
