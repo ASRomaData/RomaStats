@@ -3,6 +3,8 @@ import json
 import os
 import sys
 import base64
+import uuid
+import urllib.request
 from datetime import datetime, timezone, timedelta
 from curl_cffi import requests as curl_requests
 from atproto import Client
@@ -363,57 +365,33 @@ def generate_match_card(event, stats, output_path=CARD_FILE, halftime=False):
 
 # --- GitHub image commit ---
 
-def commit_image_to_github(image_path):
-    if not GH_TOKEN_BOT or not GH_REPOSITORY:
-        print("GITHUB_TOKEN/GITHUB_REPOSITORY mancanti."); return None
-    owner,repo = GH_REPOSITORY.split("/",1)
-    api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{image_path}"
-    gh_h = {"Authorization":f"Bearer {GH_TOKEN_BOT}","Accept":"application/vnd.github+json","Content-Type":"application/json","X-GitHub-Api-Version":"2022-11-28"}
-    with open(image_path,"rb") as f:
-        content_b64 = base64.b64encode(f.read()).decode()
-    get_res = curl_requests.get(api_url,headers=gh_h,timeout=15)
-    sha = get_res.json().get("sha") if get_res.status_code==200 else None
-    body = json.dumps({"message":"update match card [skip ci]","content":content_b64,"branch":"main",**({"sha":sha} if sha else {})}).encode()
-    put_res = curl_requests.put(api_url,headers=gh_h,data=body,timeout=30)
-    if put_res.status_code in(200,201):
-        raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{image_path}"
-        print(f"Immagine su GitHub: {raw_url}"); return raw_url
-    print(f"Errore commit: {put_res.status_code} — {put_res.text[:200]}"); return None
-
-def verify_url_accessible(url,retries=3,wait=8):
-    for attempt in range(retries):
-        try:
-            r = curl_requests.head(url,timeout=10)
-            if r.status_code==200:
-                print(f"  URL accessibile (tentativo {attempt+1})"); return True
-        except Exception: pass
-        if attempt<retries-1:
-            print(f"  URL non pronto, attendo {wait}s..."); time.sleep(wait)
-    print("  WARN: URL non verificato, provo comunque."); return False
-
-# --- @officialasroma photo ---
-
-def get_officialasroma_latest_photo():
-    ig_h = {
-        "User-Agent":"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-        "Accept":"application/json, text/plain, */*","Accept-Language":"it-IT,it;q=0.9,en;q=0.8",
-        "x-ig-app-id":"936619743392459","Referer":"https://www.instagram.com/",
-    }
+def upload_image_public(image_path):
+    """Upload to 0x0.st — free, no account, permanent public URL, stdlib only."""
     try:
-        res = curl_requests.get("https://www.instagram.com/api/v1/users/web_profile_info/?username=officialasroma",headers=ig_h,impersonate="safari_ios17_2",timeout=20)
-        if res.status_code!=200:
-            print(f"  @officialasroma: status {res.status_code}"); return None
-        edges=(res.json().get("data",{}).get("user",{}).get("edge_owner_to_timeline_media",{}).get("edges",[]))
-        for edge in edges:
-            node=edge.get("node",{})
-            if node.get("is_video"): continue
-            url=node.get("display_url")
-            if url: print("  @officialasroma foto OK."); return url
+        with open(image_path, "rb") as f:
+            img_bytes = f.read()
+        boundary = uuid.uuid4().hex
+        body = (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="file"; filename="match_card.png"\r\n'
+            f"Content-Type: image/png\r\n\r\n"
+        ).encode() + img_bytes + f"\r\n--{boundary}--\r\n".encode()
+        req = urllib.request.Request(
+            "https://0x0.st",
+            data=body,
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            url = resp.read().decode().strip()
+        if url.startswith("http"):
+            print(f"  Upload 0x0.st OK: {url}")
+            return url
+        print(f"  0x0.st risposta inattesa: {url}")
+        return None
     except Exception as e:
-        print(f"  Errore scraping @officialasroma: {e}")
-    return None
-
-# --- Instagram Graph API ---
+        print(f"  Upload 0x0.st fallito: {e}")
+        return None
 
 def post_to_instagram(image_url,caption):
     if not IG_USER_ID or not IG_TOKEN:
@@ -487,18 +465,12 @@ def publish_to_instagram(match, stats, halftime=False):
     print("\n--- INSTAGRAM ---")
     ig_caption = format_caption_instagram(match, stats, halftime=halftime)
     print(f"Caption ({len(ig_caption)} chars):\n{ig_caption}\n")
-
     if not generate_match_card(match, stats, halftime=halftime):
         print("  Generazione card fallita, skip Instagram."); return False
-
-    raw_url = commit_image_to_github(CARD_FILE)
-    if not raw_url:
-        print("  Commit immagine fallito, skip Instagram."); return False
-
-    print("  Attendo 15s per propagazione CDN GitHub...")
-    time.sleep(15)
-    print(f"  image_url: {raw_url}")
-    return post_to_instagram(raw_url, ig_caption)
+    image_url = upload_image_public(CARD_FILE)
+    if not image_url:
+        print("  Upload immagine fallito, skip Instagram."); return False
+    return post_to_instagram(image_url, ig_caption)
 
 # --- Main ---
 
