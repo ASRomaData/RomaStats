@@ -40,16 +40,16 @@ jobs:
       - name: Installa dipendenze
         run: pip install -r requirements.txt
 
-      - name: Esegui bot (schedule — auto)
+      - name: Esegui bot (schedule)
         if: github.event_name == 'schedule'
         env:
-          BSKY_HANDLE:       ${{ secrets.BSKY_HANDLE }}
-          BSKY_PASSWORD:     ${{ secrets.BSKY_PASSWORD }}
-          IG_USER_ID:        ${{ secrets.IG_USER_ID }}
-          IG_ACCESS_TOKEN:   ${{ secrets.IG_ACCESS_TOKEN }}
-          VERCEL_DOMAIN:     ${{ secrets.VERCEL_DOMAIN }}
-          GH_TOKEN:          ${{ secrets.GH_TOKEN }}
-          GH_REPOSITORY:     ${{ github.repository }}
+          BSKY_HANDLE:      ${{ secrets.BSKY_HANDLE }}
+          BSKY_PASSWORD:    ${{ secrets.BSKY_PASSWORD }}
+          IG_USER_ID:       ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN:  ${{ secrets.IG_ACCESS_TOKEN }}
+          VERCEL_DOMAIN:    ${{ secrets.VERCEL_DOMAIN }}
+          GH_TOKEN:         ${{ secrets.GH_TOKEN }}
+          GH_REPOSITORY:    ${{ github.repository }}
         run: |
           python bot.py
           python bot.py --halftime
@@ -57,13 +57,13 @@ jobs:
       - name: Esegui bot (manuale)
         if: github.event_name == 'workflow_dispatch'
         env:
-          BSKY_HANDLE:       ${{ secrets.BSKY_HANDLE }}
-          BSKY_PASSWORD:     ${{ secrets.BSKY_PASSWORD }}
-          IG_USER_ID:        ${{ secrets.IG_USER_ID }}
-          IG_ACCESS_TOKEN:   ${{ secrets.IG_ACCESS_TOKEN }}
-          VERCEL_DOMAIN:     ${{ secrets.VERCEL_DOMAIN }}
-          GH_TOKEN:          ${{ secrets.GH_TOKEN }}
-          GH_REPOSITORY:     ${{ github.repository }}
+          BSKY_HANDLE:      ${{ secrets.BSKY_HANDLE }}
+          BSKY_PASSWORD:    ${{ secrets.BSKY_PASSWORD }}
+          IG_USER_ID:       ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN:  ${{ secrets.IG_ACCESS_TOKEN }}
+          VERCEL_DOMAIN:    ${{ secrets.VERCEL_DOMAIN }}
+          GH_TOKEN:         ${{ secrets.GH_TOKEN }}
+          GH_REPOSITORY:    ${{ github.repository }}
         run: |
           MODE="${{ github.event.inputs.mode }}"
           if [ "$MODE" = "force" ]; then
@@ -74,7 +74,7 @@ jobs:
             python bot.py
           fi
 
-      - name: Commit dati dashboard + immagine
+      - name: Commit dati dashboard
         run: |
           git config user.name  "Roma Bot"
           git config user.email "bot@roma-stats.com"
