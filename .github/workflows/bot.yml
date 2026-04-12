@@ -48,8 +48,8 @@ jobs:
           IG_USER_ID:        ${{ secrets.IG_USER_ID }}
           IG_ACCESS_TOKEN:   ${{ secrets.IG_ACCESS_TOKEN }}
           VERCEL_DOMAIN:     ${{ secrets.VERCEL_DOMAIN }}
-          BOT_GH_TOKEN:      ${{ secrets.GH_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN:          ${{ secrets.GH_TOKEN }}
+          GH_REPOSITORY:     ${{ github.repository }}
         run: |
           python bot.py
           python bot.py --halftime
@@ -62,8 +62,8 @@ jobs:
           IG_USER_ID:        ${{ secrets.IG_USER_ID }}
           IG_ACCESS_TOKEN:   ${{ secrets.IG_ACCESS_TOKEN }}
           VERCEL_DOMAIN:     ${{ secrets.VERCEL_DOMAIN }}
-          BOT_GH_TOKEN:      ${{ secrets.GH_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN:          ${{ secrets.GH_TOKEN }}
+          GH_REPOSITORY:     ${{ github.repository }}
         run: |
           MODE="${{ github.event.inputs.mode }}"
           if [ "$MODE" = "force" ]; then
