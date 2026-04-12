@@ -365,33 +365,79 @@ def generate_match_card(event, stats, output_path=CARD_FILE, halftime=False):
 
 # --- GitHub image commit ---
 
+def _multipart_post(endpoint, field_name, filename, img_bytes):
+    """Generic multipart POST using stdlib only."""
+    boundary = uuid.uuid4().hex
+    body = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="{field_name}"; filename="{filename}"\r\n'
+        f"Content-Type: image/png\r\n\r\n"
+    ).encode() + img_bytes + f"\r\n--{boundary}--\r\n".encode()
+    req = urllib.request.Request(
+        endpoint, data=body,
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        return resp.read().decode().strip()
+
 def upload_image_public(image_path):
-    """Upload to 0x0.st — free, no account, permanent public URL, stdlib only."""
+    """
+    Upload image trying multiple free hosts in order until one works.
+    No account needed. Uses stdlib only.
+    """
+    with open(image_path, "rb") as f:
+        img_bytes = f.read()
+
+    # 1. catbox.moe — permanent, very reliable
     try:
-        with open(image_path, "rb") as f:
-            img_bytes = f.read()
         boundary = uuid.uuid4().hex
         body = (
             f"--{boundary}\r\n"
-            f'Content-Disposition: form-data; name="file"; filename="match_card.png"\r\n'
+            f'Content-Disposition: form-data; name="reqtype"\r\n\r\nfileupload\r\n'
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="fileToUpload"; filename="match_card.png"\r\n'
             f"Content-Type: image/png\r\n\r\n"
         ).encode() + img_bytes + f"\r\n--{boundary}--\r\n".encode()
         req = urllib.request.Request(
-            "https://0x0.st",
-            data=body,
+            "https://catbox.moe/user/api.php", data=body,
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=20) as resp:
             url = resp.read().decode().strip()
+        if url.startswith("https://files.catbox.moe/"):
+            print(f"  Upload catbox.moe OK: {url}")
+            return url
+        print(f"  catbox.moe risposta inattesa: {url}")
+    except Exception as e:
+        print(f"  catbox.moe fallito: {e}")
+
+    # 2. tmpfiles.org — 60min expiry (più che sufficiente per Instagram)
+    try:
+        import json as _json
+        raw = _multipart_post("https://tmpfiles.org/api/v1/upload", "file", "match_card.png", img_bytes)
+        data = _json.loads(raw)
+        page_url = data.get("data", {}).get("url", "")
+        # tmpfiles.org returns page URL; direct download URL adds /dl/ segment
+        if page_url:
+            dl_url = page_url.replace("tmpfiles.org/", "tmpfiles.org/dl/")
+            print(f"  Upload tmpfiles.org OK: {dl_url}")
+            return dl_url
+    except Exception as e:
+        print(f"  tmpfiles.org fallito: {e}")
+
+    # 3. 0x0.st — fallback
+    try:
+        url = _multipart_post("https://0x0.st", "file", "match_card.png", img_bytes)
         if url.startswith("http"):
             print(f"  Upload 0x0.st OK: {url}")
             return url
-        print(f"  0x0.st risposta inattesa: {url}")
-        return None
     except Exception as e:
-        print(f"  Upload 0x0.st fallito: {e}")
-        return None
+        print(f"  0x0.st fallito: {e}")
+
+    print("  Tutti gli upload falliti.")
+    return None
 
 def post_to_instagram(image_url,caption):
     if not IG_USER_ID or not IG_TOKEN:
