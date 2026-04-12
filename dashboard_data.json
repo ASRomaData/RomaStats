@@ -1,9 +1,9 @@
 {
-  "last_updated": "2026-04-12T22:34:23.528021+00:00",
+  "last_updated": "2026-04-12T22:40:36.616043+00:00",
   "force_mode": true,
   "halftime_mode": false,
   "published": true,
-  "published_ig": false,
+  "published_ig": true,
   "match": {
     "id": 13981742,
     "home": "Roma",
