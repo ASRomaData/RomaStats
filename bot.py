@@ -344,12 +344,13 @@ def generate_match_card(event, stats, output_path=CARD_FILE, halftime=False):
     sub=f"{tourney}  .  {date_s}" if tourney else date_s
     draw.text((W//2,300),sub,font=f_tiny,fill=MUTED,anchor="mm")
     stat_rows=[
-        ("Tiri (nello specchio)",f"{sv(stats,'Total shots','home')} ({sv(stats,'Shots on target','home')})",f"{sv(stats,'Total shots','away')} ({sv(stats,'Shots on target','away')})"),
-        ("xG  |  xG in porta",f"{sv(stats,'Expected goals','home')}  |  {xgoth}",f"{sv(stats,'Expected goals','away')}  |  {xgota}"),
-        ("Possesso",sv(stats,"Ball possession","home"),sv(stats,"Ball possession","away")),
-        ("Precisione",prech,preca),
-        ("Grandi Occasioni",sv(stats,"Big chances","home"),sv(stats,"Big chances","away")),
-        ("Gialli / Rossi",f"{sv(stats,'Yellow cards','home')} / {sv(stats,'Red cards','home')}",f"{sv(stats,'Yellow cards','away')} / {sv(stats,'Red cards','away')}"),
+        ("Tiri (nello specchio)", f"{sv(stats,'Total shots','home')} ({sv(stats,'Shots on target','home')})", f"{sv(stats,'Total shots','away')} ({sv(stats,'Shots on target','away')})"),
+        ("xG", sv(stats,'Expected goals','home'), sv(stats,'Expected goals','away')),
+        ("xG in porta", xgoth, xgota),
+        ("Possesso", sv(stats,"Ball possession","home"), sv(stats,"Ball possession","away")),
+        ("Precisione", prech, preca),
+        ("Grandi Occasioni", sv(stats,"Big chances","home"), sv(stats,"Big chances","away")),
+        ("Gialli / Rossi", f"{sv(stats,'Yellow cards','home')} / {sv(stats,'Red cards','home')}", f"{sv(stats,'Yellow cards','away')} / {sv(stats,'Red cards','away')}"),
     ]
     stat_rows=[(l,h,a) for l,h,a in stat_rows if not(h.strip("-/ |")==""and a.strip("-/ |")=="")]
     row_h=min(74,(H-418)//max(len(stat_rows),1)); y0=370
