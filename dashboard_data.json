@@ -1,68 +1,68 @@
 {
-  "last_updated": "2026-04-11T23:05:43.266053+00:00",
+  "last_updated": "2026-04-12T07:56:32.560589+00:00",
   "force_mode": true,
   "halftime_mode": false,
   "published": true,
   "published_ig": false,
   "match": {
-    "id": 13981742,
-    "home": "Roma",
-    "away": "Pisa",
-    "score": "3-0",
-    "h_score": 3,
-    "a_score": 0,
-    "date": "10 Apr 2026 18:45",
-    "tournament": "Serie A"
+    "id": 14068733,
+    "home": "Roma U20",
+    "away": "Napoli U20",
+    "score": "2-2",
+    "h_score": 2,
+    "a_score": 2,
+    "date": "11 Apr 2026 11:00",
+    "tournament": "Primavera 1"
   },
   "stats": {
     "total_shots": {
-      "home": "8",
-      "away": "9"
-    },
-    "shots_on_target": {
-      "home": "3",
-      "away": "5"
-    },
-    "expected_goals": {
-      "home": "1.53",
-      "away": "1.26"
-    },
-    "xg_on_target": {
-      "home": "3",
-      "away": "5"
-    },
-    "ball_possession": {
-      "home": "59%",
-      "away": "41%"
-    },
-    "passing_precision": {
-      "home": "87%",
-      "away": "76%"
-    },
-    "big_chances": {
-      "home": "2",
-      "away": "1"
-    },
-    "accurate_passes": {
-      "home": "513",
-      "away": "313"
-    },
-    "fouls": {
-      "home": "11",
-      "away": "12"
-    },
-    "corner_kicks": {
-      "home": "1",
-      "away": "3"
-    },
-    "yellow_cards": {
-      "home": "1",
-      "away": "1"
-    },
-    "red_cards": {
       "home": "-",
       "away": "-"
+    },
+    "shots_on_target": {
+      "home": "-",
+      "away": "-"
+    },
+    "expected_goals": {
+      "home": "-",
+      "away": "-"
+    },
+    "xg_on_target": {
+      "home": "2",
+      "away": "2"
+    },
+    "ball_possession": {
+      "home": "-",
+      "away": "-"
+    },
+    "passing_precision": {
+      "home": "-",
+      "away": "-"
+    },
+    "big_chances": {
+      "home": "-",
+      "away": "-"
+    },
+    "accurate_passes": {
+      "home": "-",
+      "away": "-"
+    },
+    "fouls": {
+      "home": "-",
+      "away": "-"
+    },
+    "corner_kicks": {
+      "home": "-",
+      "away": "-"
+    },
+    "yellow_cards": {
+      "home": "2",
+      "away": "2"
+    },
+    "red_cards": {
+      "home": "0",
+      "away": "0"
     }
   },
-  "post_text": "#RomaPisa 3:0\nTiri: 8 - 9\nTiri nello specchio: 3 - 5\nxG: 1.53 - 1.26\nxG in porta: 3 - 5\nPossesso: 59% - 41%\nPrecisione: 87% - 76%\nGrandi Occasioni: 2 - 1\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
+  "post_text": "#RomaU20NapoliU20 2:2\nTiri: - - -\nTiri nello specchio: - - -\nxG in porta: 2 - 2\nPossesso: - - -\nPrecisione: - - -\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
 }
