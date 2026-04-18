@@ -1,68 +1,68 @@
 {
-  "last_updated": "2026-04-18T16:06:24.340769+00:00",
+  "last_updated": "2026-04-18T19:34:36.719615+00:00",
   "force_mode": false,
   "halftime_mode": true,
   "published": true,
   "published_ig": false,
   "match": {
-    "id": 15967903,
-    "home": "Neftekhimik Nizhnekamsk",
-    "away": "Spartak Kostroma",
-    "score": "2-1",
-    "h_score": 2,
+    "id": 13980102,
+    "home": "Roma",
+    "away": "Atalanta",
+    "score": "1-1",
+    "h_score": 1,
     "a_score": 1,
-    "date": "18 Apr 2026 14:30",
-    "tournament": "First League"
+    "date": "18 Apr 2026 18:45",
+    "tournament": "Serie A"
   },
   "stats": {
     "total_shots": {
-      "home": "-",
-      "away": "-"
-    },
-    "shots_on_target": {
-      "home": "4",
-      "away": "6"
-    },
-    "expected_goals": {
-      "home": "-",
-      "away": "-"
-    },
-    "xg_on_target": {
-      "home": "2.00",
-      "away": "1.00"
-    },
-    "ball_possession": {
-      "home": "52%",
-      "away": "48%"
-    },
-    "passing_precision": {
-      "home": "-",
-      "away": "-"
-    },
-    "big_chances": {
-      "home": "-",
-      "away": "-"
-    },
-    "accurate_passes": {
-      "home": "-",
-      "away": "-"
-    },
-    "fouls": {
-      "home": "-",
-      "away": "-"
-    },
-    "corner_kicks": {
-      "home": "3",
+      "home": "8",
       "away": "3"
     },
+    "shots_on_target": {
+      "home": "6",
+      "away": "2"
+    },
+    "expected_goals": {
+      "home": "0.59",
+      "away": "0.52"
+    },
+    "xg_on_target": {
+      "home": "6.00",
+      "away": "2.00"
+    },
+    "ball_possession": {
+      "home": "62%",
+      "away": "38%"
+    },
+    "passing_precision": {
+      "home": "87%",
+      "away": "74%"
+    },
+    "big_chances": {
+      "home": "3",
+      "away": "1"
+    },
+    "accurate_passes": {
+      "home": "289",
+      "away": "153"
+    },
+    "fouls": {
+      "home": "2",
+      "away": "5"
+    },
+    "corner_kicks": {
+      "home": "4",
+      "away": "2"
+    },
     "yellow_cards": {
-      "home": "1",
-      "away": "0"
+      "home": "-",
+      "away": "-"
     },
     "red_cards": {
       "home": "-",
       "away": "-"
     }
   },
-  "post_text": "#NeftekhimikNizhnekamskSpartakKostroma 2:1 (Statistiche 1T)\nTiri: - - -\nTiri nello specchio: 4 - 6\nxG in porta: 2.00 - 1.00\nPossesso: 52% - 48%\nPrecisione: - - -\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
+  "post_text": "#RomaAtalanta 1:1 (Statistiche 1T)\nTiri: 8 - 3\nTiri nello specchio: 6 - 2\nxG: 0.59 - 0.52\nxG in porta: 6.00 - 2.00\nPossesso: 62% - 38%\nPrecisione: 87% - 74%\nGrandi Occasioni: 3 - 1\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
 }
