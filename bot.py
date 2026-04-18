@@ -187,40 +187,35 @@ def calc_precision(stats, side):
         pass
     return "-"
 
-def calc_xgot(stats, side, event):
+def calc_xgot(stats, side, event, all_stats=None):
     """
-    Calcola xGOT (Expected Goals on Target):
-    xGOT (home) = Goal (home) + xG prevented (away)
-    xGOT (away) = Goal (away) + xG prevented (home)
+    xGOT (home) = Goal (home) + Goals prevented (away GK)
+    xGOT (away) = Goal (away) + Goals prevented (home GK)
+    all_stats: pass full-period stats when period stats lack "Goals prevented"
+               (e.g. at halftime, "1ST" stats don't have xG prevented)
     """
     try:
-        # 1. Identifica i gol fatti dalla squadra scelta (side)
         if side == "home":
-            goals = int(event.get("homeScore", {}).get("display", 0) or 0)
-            opp_side = "away"  # L'xG prevented da guardare è quello dell'avversario
+            goals    = int(event.get("homeScore", {}).get("display", 0) or 0)
+            opp_side = "away"
         else:
-            goals = int(event.get("awayScore", {}).get("display", 0) or 0)
+            goals    = int(event.get("awayScore", {}).get("display", 0) or 0)
             opp_side = "home"
 
-        # 2. Cerca il valore "Goals prevented" (xG prevented) del portiere avversario
         prevented = 0
-        # SofaScore usa solitamente "Goals prevented" per l'xG salvato dal portiere
-        keys_to_check = ("Goals prevented", "goalsPrevented", "Goalkeeper saves")
-        
-        for key in keys_to_check:
-            raw = stats.get(key, {}).get(opp_side)
-            if raw not in (None, "", "-"):
-                # Pulizia stringa (alcuni valori hanno il '+' davanti)
-                clean_val = str(raw).replace('+', '')
-                prevented = float(clean_val)
+        # Try period stats first, then all_stats as fallback for "Goals prevented"
+        for src in ([stats, all_stats] if all_stats else [stats]):
+            if src is None:
+                continue
+            for key in ("Goals prevented", "goalsPrevented"):
+                raw = src.get(key, {}).get(opp_side)
+                if raw not in (None, "", "-"):
+                    prevented = float(str(raw).replace("+", ""))
+                    break
+            if prevented:
                 break
-        
-        # 3. Somma Gol fatti + Gol prevenuti dall'avversario
-        # Usiamo round(1) perché gli xG sono solitamente decimali (es. 1.45)
-        total_xgot = round(float(goals) + prevented, 2)
-        
-        # Restituisci come stringa per il bot, formattata a 2 decimali
-        return "{:.2f}".format(total_xgot)
+
+        return "{:.2f}".format(round(float(goals) + prevented, 2))
 
     except Exception as e:
         print(f"Errore nel calcolo xGOT per {side}: {e}")
@@ -533,6 +528,12 @@ def main():
         stats=get_stats_for_period(match["id"],"1ST")
         if not stats:
             print("Statistiche 1° tempo non disponibili."); return
+        # Fetch ALL period stats for "Goals prevented" (not available in 1ST period)
+        stats_all=get_stats_for_period(match["id"],"ALL")
+        # Inject Goals prevented into 1ST stats from ALL stats
+        for key in ("Goals prevented","goalsPrevented"):
+            if key in stats_all:
+                stats[key] = stats_all[key]
         _,last_ht_id=load_last_posted()
         ht_key=f"ht_{match['id']}"
         if last_ht_id==ht_key:
