@@ -1,68 +1,68 @@
 {
-  "last_updated": "2026-04-12T22:55:09.504888+00:00",
-  "force_mode": true,
-  "halftime_mode": false,
+  "last_updated": "2026-04-18T16:06:24.340769+00:00",
+  "force_mode": false,
+  "halftime_mode": true,
   "published": true,
-  "published_ig": true,
+  "published_ig": false,
   "match": {
-    "id": 13981742,
-    "home": "Roma",
-    "away": "Pisa",
-    "score": "3-0",
-    "h_score": 3,
-    "a_score": 0,
-    "date": "10 Apr 2026 18:45",
-    "tournament": "Serie A"
+    "id": 15967903,
+    "home": "Neftekhimik Nizhnekamsk",
+    "away": "Spartak Kostroma",
+    "score": "2-1",
+    "h_score": 2,
+    "a_score": 1,
+    "date": "18 Apr 2026 14:30",
+    "tournament": "First League"
   },
   "stats": {
     "total_shots": {
-      "home": "8",
-      "away": "9"
+      "home": "-",
+      "away": "-"
     },
     "shots_on_target": {
-      "home": "3",
-      "away": "5"
+      "home": "4",
+      "away": "6"
     },
     "expected_goals": {
-      "home": "1.53",
-      "away": "1.26"
+      "home": "-",
+      "away": "-"
     },
     "xg_on_target": {
-      "home": "1.80",
-      "away": "1.20"
+      "home": "2.00",
+      "away": "1.00"
     },
     "ball_possession": {
-      "home": "59%",
-      "away": "41%"
+      "home": "52%",
+      "away": "48%"
     },
     "passing_precision": {
-      "home": "87%",
-      "away": "76%"
+      "home": "-",
+      "away": "-"
     },
     "big_chances": {
-      "home": "2",
-      "away": "1"
+      "home": "-",
+      "away": "-"
     },
     "accurate_passes": {
-      "home": "513",
-      "away": "313"
+      "home": "-",
+      "away": "-"
     },
     "fouls": {
-      "home": "11",
-      "away": "12"
+      "home": "-",
+      "away": "-"
     },
     "corner_kicks": {
-      "home": "1",
+      "home": "3",
       "away": "3"
     },
     "yellow_cards": {
       "home": "1",
-      "away": "1"
+      "away": "0"
     },
     "red_cards": {
       "home": "-",
       "away": "-"
     }
   },
-  "post_text": "#RomaPisa 3:0\nTiri: 8 - 9\nTiri nello specchio: 3 - 5\nxG: 1.53 - 1.26\nxG in porta: 1.80 - 1.20\nPossesso: 59% - 41%\nPrecisione: 87% - 76%\nGrandi Occasioni: 2 - 1\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
+  "post_text": "#NeftekhimikNizhnekamskSpartakKostroma 2:1 (Statistiche 1T)\nTiri: - - -\nTiri nello specchio: 4 - 6\nxG in porta: 2.00 - 1.00\nPossesso: 52% - 48%\nPrecisione: - - -\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
 }
