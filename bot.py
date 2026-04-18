@@ -18,8 +18,8 @@ GH_TOKEN_BOT  = os.environ.get("GH_TOKEN", "")
 VERCEL_DOMAIN = os.environ.get("VERCEL_DOMAIN", "")   # e.g. roma-bot.vercel.app
 TEAM_NAME         = "roma"
 TEAM_ID           = 2702   # AS Roma official SofaScore ID — excludes Roma U20 etc.
-HASHTAGS_BSKY     = "#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
-HASHTAGS_IG       = "#Roma #SerieA #ASRoma #ForzaRoma #SofaScore #calcio #football #matchreport"
+HASHTAGS_BSKY     = "#Roma #SerieA #ASRoma #ForzaRoma"
+HASHTAGS_IG       = "#Roma #SerieA #ASRoma #ForzaRoma #calcio #football #matchreport"
 DATA_FILE         = "dashboard_data.json"
 POSTED_FILE       = "last_posted.json"
 CARD_FILE         = "match_card.png"
@@ -279,14 +279,14 @@ def format_post_bluesky(event, stats, halftime=False):
 
     lines = [
         prefix,
-        f"Tiri: {sv(stats,'Total shots','home')} - {sv(stats,'Total shots','away')}",
-        f"Tiri nello specchio: {sv(stats,'Shots on target','home')} - {sv(stats,'Shots on target','away')}",
-        f"xG: {xgh} - {xga}" if xgh != "-" else None,
-        f"xG in porta: {xgoth} - {xgota}",
-        f"Possesso: {sv(stats,'Ball possession','home')} - {sv(stats,'Ball possession','away')}",
-        f"Precisione: {prech} - {preca}",
-        f"Tocchi in area avversaria: {tch} - {tca}" if tch != "-" else None,
-        f"Grandi Occasioni: {bch} - {bca}" if bch != "-" else None,
+        f"Tiri {sv(stats,'Total shots','home')}-{sv(stats,'Total shots','away')}",
+        f"Tiri nello specchio {sv(stats,'Shots on target','home')}-{sv(stats,'Shots on target','away')}",
+        f"xG {xgh}-{xga}" if xgh != "-" else None,
+        f"xG in porta {xgoth}-{xgota}",
+        f"Possesso {sv(stats,'Ball possession','home')} - {sv(stats,'Ball possession','away')}",
+        f"Precisione {prech} - {preca}",
+        f"Tocchi in area avversaria {tch} - {tca}" if tch != "-" else None,
+        f"Grandi Occasioni {bch} - {bca}" if bch != "-" else None,
         "",
         HASHTAGS_BSKY,
     ]
