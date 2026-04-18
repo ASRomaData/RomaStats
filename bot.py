@@ -3,8 +3,6 @@ import json
 import os
 import sys
 import base64
-import uuid
-import urllib.request
 from datetime import datetime, timezone, timedelta
 from curl_cffi import requests as curl_requests
 from atproto import Client
@@ -18,8 +16,8 @@ GH_TOKEN_BOT  = os.environ.get("GH_TOKEN", "")
 VERCEL_DOMAIN = os.environ.get("VERCEL_DOMAIN", "")   # e.g. roma-bot.vercel.app
 TEAM_NAME         = "roma"
 TEAM_ID           = 2702   # AS Roma official SofaScore ID — excludes Roma U20 etc.
-HASHTAGS_BSKY     = "#Roma #SerieA #ASRoma #ForzaRoma"
-HASHTAGS_IG       = "#Roma #SerieA #ASRoma #ForzaRoma #calcio #football #matchreport"
+HASHTAGS_BSKY     = "#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
+HASHTAGS_IG       = "#Roma #SerieA #ASRoma #ForzaRoma #SofaScore #calcio #football #matchreport"
 DATA_FILE         = "dashboard_data.json"
 POSTED_FILE       = "last_posted.json"
 CARD_FILE         = "match_card.png"
@@ -187,35 +185,40 @@ def calc_precision(stats, side):
         pass
     return "-"
 
-def calc_xgot(stats, side, event, all_stats=None):
+def calc_xgot(stats, side, event):
     """
-    xGOT (home) = Goal (home) + Goals prevented (away GK)
-    xGOT (away) = Goal (away) + Goals prevented (home GK)
-    all_stats: pass full-period stats when period stats lack "Goals prevented"
-               (e.g. at halftime, "1ST" stats don't have xG prevented)
+    Calcola xGOT (Expected Goals on Target):
+    xGOT (home) = Goal (home) + xG prevented (away)
+    xGOT (away) = Goal (away) + xG prevented (home)
     """
     try:
+        # 1. Identifica i gol fatti dalla squadra scelta (side)
         if side == "home":
-            goals    = int(event.get("homeScore", {}).get("display", 0) or 0)
-            opp_side = "away"
+            goals = int(event.get("homeScore", {}).get("display", 0) or 0)
+            opp_side = "away"  # L'xG prevented da guardare è quello dell'avversario
         else:
-            goals    = int(event.get("awayScore", {}).get("display", 0) or 0)
+            goals = int(event.get("awayScore", {}).get("display", 0) or 0)
             opp_side = "home"
 
+        # 2. Cerca il valore "Goals prevented" (xG prevented) del portiere avversario
         prevented = 0
-        # Try period stats first, then all_stats as fallback for "Goals prevented"
-        for src in ([stats, all_stats] if all_stats else [stats]):
-            if src is None:
-                continue
-            for key in ("Goals prevented", "goalsPrevented"):
-                raw = src.get(key, {}).get(opp_side)
-                if raw not in (None, "", "-"):
-                    prevented = float(str(raw).replace("+", ""))
-                    break
-            if prevented:
+        # SofaScore usa solitamente "Goals prevented" per l'xG salvato dal portiere
+        keys_to_check = ("Goals prevented", "goalsPrevented", "Goalkeeper saves")
+        
+        for key in keys_to_check:
+            raw = stats.get(key, {}).get(opp_side)
+            if raw not in (None, "", "-"):
+                # Pulizia stringa (alcuni valori hanno il '+' davanti)
+                clean_val = str(raw).replace('+', '')
+                prevented = float(clean_val)
                 break
-
-        return "{:.2f}".format(round(float(goals) + prevented, 2))
+        
+        # 3. Somma Gol fatti + Gol prevenuti dall'avversario
+        # Usiamo round(1) perché gli xG sono solitamente decimali (es. 1.45)
+        total_xgot = round(float(goals) + prevented, 2)
+        
+        # Restituisci come stringa per il bot, formattata a 2 decimali
+        return "{:.2f}".format(total_xgot)
 
     except Exception as e:
         print(f"Errore nel calcolo xGOT per {side}: {e}")
@@ -279,14 +282,14 @@ def format_post_bluesky(event, stats, halftime=False):
 
     lines = [
         prefix,
-        f"Tiri {sv(stats,'Total shots','home')}-{sv(stats,'Total shots','away')}",
-        f"Tiri nello specchio {sv(stats,'Shots on target','home')}-{sv(stats,'Shots on target','away')}",
-        f"xG {xgh}-{xga}" if xgh != "-" else None,
-        f"xG in porta {xgoth}-{xgota}",
-        f"Possesso {sv(stats,'Ball possession','home')} - {sv(stats,'Ball possession','away')}",
-        f"Precisione {prech} - {preca}",
-        f"Tocchi in area avversaria {tch} - {tca}" if tch != "-" else None,
-        f"Grandi Occasioni {bch} - {bca}" if bch != "-" else None,
+        f"Tiri: {sv(stats,'Total shots','home')} - {sv(stats,'Total shots','away')}",
+        f"Tiri nello specchio: {sv(stats,'Shots on target','home')} - {sv(stats,'Shots on target','away')}",
+        f"xG: {xgh} - {xga}" if xgh != "-" else None,
+        f"xG in porta: {xgoth} - {xgota}",
+        f"Possesso: {sv(stats,'Ball possession','home')} - {sv(stats,'Ball possession','away')}",
+        f"Precisione: {prech} - {preca}",
+        f"Tocchi in area avversaria: {tch} - {tca}" if tch != "-" else None,
+        f"Grandi Occasioni: {bch} - {bca}" if bch != "-" else None,
         "",
         HASHTAGS_BSKY,
     ]
@@ -361,78 +364,34 @@ def generate_match_card(event, stats, output_path=CARD_FILE, halftime=False):
 
 # --- GitHub image commit ---
 
-def _multipart_post(endpoint, field_name, filename, img_bytes):
-    """Generic multipart POST using stdlib only."""
-    boundary = uuid.uuid4().hex
-    body = (
-        f"--{boundary}\r\n"
-        f'Content-Disposition: form-data; name="{field_name}"; filename="{filename}"\r\n'
-        f"Content-Type: image/png\r\n\r\n"
-    ).encode() + img_bytes + f"\r\n--{boundary}--\r\n".encode()
-    req = urllib.request.Request(
-        endpoint, data=body,
-        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        return resp.read().decode().strip()
-
-def upload_image_public(image_path):
-    """
-    Upload image trying multiple free hosts in order until one works.
-    No account needed. Uses stdlib only.
-    """
+def commit_image_to_github(image_path):
+    """Commit image to GitHub repo and return raw.githubusercontent.com URL."""
+    if not GH_TOKEN_BOT or not GH_REPOSITORY:
+        print("GH_TOKEN/GH_REPOSITORY mancanti."); return None
+    owner, repo = GH_REPOSITORY.split("/", 1)
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{image_path}"
+    gh_h = {
+        "Authorization": f"Bearer {GH_TOKEN_BOT}",
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
     with open(image_path, "rb") as f:
-        img_bytes = f.read()
-
-    # 1. catbox.moe — permanent, very reliable
-    try:
-        boundary = uuid.uuid4().hex
-        body = (
-            f"--{boundary}\r\n"
-            f'Content-Disposition: form-data; name="reqtype"\r\n\r\nfileupload\r\n'
-            f"--{boundary}\r\n"
-            f'Content-Disposition: form-data; name="fileToUpload"; filename="match_card.png"\r\n'
-            f"Content-Type: image/png\r\n\r\n"
-        ).encode() + img_bytes + f"\r\n--{boundary}--\r\n".encode()
-        req = urllib.request.Request(
-            "https://catbox.moe/user/api.php", data=body,
-            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            url = resp.read().decode().strip()
-        if url.startswith("https://files.catbox.moe/"):
-            print(f"  Upload catbox.moe OK: {url}")
-            return url
-        print(f"  catbox.moe risposta inattesa: {url}")
-    except Exception as e:
-        print(f"  catbox.moe fallito: {e}")
-
-    # 2. tmpfiles.org — 60min expiry (più che sufficiente per Instagram)
-    try:
-        import json as _json
-        raw = _multipart_post("https://tmpfiles.org/api/v1/upload", "file", "match_card.png", img_bytes)
-        data = _json.loads(raw)
-        page_url = data.get("data", {}).get("url", "")
-        # tmpfiles.org returns page URL; direct download URL adds /dl/ segment
-        if page_url:
-            dl_url = page_url.replace("tmpfiles.org/", "tmpfiles.org/dl/")
-            print(f"  Upload tmpfiles.org OK: {dl_url}")
-            return dl_url
-    except Exception as e:
-        print(f"  tmpfiles.org fallito: {e}")
-
-    # 3. 0x0.st — fallback
-    try:
-        url = _multipart_post("https://0x0.st", "file", "match_card.png", img_bytes)
-        if url.startswith("http"):
-            print(f"  Upload 0x0.st OK: {url}")
-            return url
-    except Exception as e:
-        print(f"  0x0.st fallito: {e}")
-
-    print("  Tutti gli upload falliti.")
+        content_b64 = base64.b64encode(f.read()).decode()
+    get_res = curl_requests.get(api_url, headers=gh_h, timeout=15)
+    sha = get_res.json().get("sha") if get_res.status_code == 200 else None
+    body = json.dumps({
+        "message": "Update match card [skip ci]",
+        "content": content_b64,
+        "branch": "main",
+        **({"sha": sha} if sha else {})
+    }).encode()
+    put_res = curl_requests.put(api_url, headers=gh_h, data=body, timeout=30)
+    if put_res.status_code in (200, 201):
+        raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{image_path}"
+        print(f"Immagine committata: {raw_url}")
+        return raw_url
+    print(f"Errore commit: {put_res.status_code} — {put_res.text[:200]}")
     return None
 
 def post_to_instagram(image_url,caption):
@@ -509,10 +468,12 @@ def publish_to_instagram(match, stats, halftime=False):
     print(f"Caption ({len(ig_caption)} chars):\n{ig_caption}\n")
     if not generate_match_card(match, stats, halftime=halftime):
         print("  Generazione card fallita, skip Instagram."); return False
-    image_url = upload_image_public(CARD_FILE)
-    if not image_url:
-        print("  Upload immagine fallito, skip Instagram."); return False
-    return post_to_instagram(image_url, ig_caption)
+    raw_url = commit_image_to_github(CARD_FILE)
+    if not raw_url:
+        print("  Commit immagine fallito, skip Instagram."); return False
+    print("  Attendo 20s propagazione GitHub CDN...")
+    time.sleep(20)
+    return post_to_instagram(raw_url, ig_caption)
 
 # --- Main ---
 
@@ -528,12 +489,6 @@ def main():
         stats=get_stats_for_period(match["id"],"1ST")
         if not stats:
             print("Statistiche 1° tempo non disponibili."); return
-        # Fetch ALL period stats for "Goals prevented" (not available in 1ST period)
-        stats_all=get_stats_for_period(match["id"],"ALL")
-        # Inject Goals prevented into 1ST stats from ALL stats
-        for key in ("Goals prevented","goalsPrevented"):
-            if key in stats_all:
-                stats[key] = stats_all[key]
         _,last_ht_id=load_last_posted()
         ht_key=f"ht_{match['id']}"
         if last_ht_id==ht_key:
