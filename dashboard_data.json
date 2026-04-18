@@ -1,7 +1,7 @@
 {
-  "last_updated": "2026-04-18T19:34:36.719615+00:00",
+  "last_updated": "2026-04-18T20:49:37.283293+00:00",
   "force_mode": false,
-  "halftime_mode": true,
+  "halftime_mode": false,
   "published": true,
   "published_ig": false,
   "match": {
@@ -16,53 +16,53 @@
   },
   "stats": {
     "total_shots": {
-      "home": "8",
-      "away": "3"
+      "home": "19",
+      "away": "8"
     },
     "shots_on_target": {
-      "home": "6",
+      "home": "9",
       "away": "2"
     },
     "expected_goals": {
-      "home": "0.59",
-      "away": "0.52"
+      "home": "0.90",
+      "away": "0.68"
     },
     "xg_on_target": {
-      "home": "6.00",
-      "away": "2.00"
+      "home": "1.82",
+      "away": "0.44"
     },
     "ball_possession": {
-      "home": "62%",
-      "away": "38%"
+      "home": "53%",
+      "away": "47%"
     },
     "passing_precision": {
-      "home": "87%",
-      "away": "74%"
+      "home": "86%",
+      "away": "80%"
     },
     "big_chances": {
       "home": "3",
       "away": "1"
     },
     "accurate_passes": {
-      "home": "289",
-      "away": "153"
+      "home": "459",
+      "away": "394"
     },
     "fouls": {
-      "home": "2",
-      "away": "5"
+      "home": "4",
+      "away": "14"
     },
     "corner_kicks": {
-      "home": "4",
-      "away": "2"
+      "home": "7",
+      "away": "6"
     },
     "yellow_cards": {
-      "home": "-",
-      "away": "-"
+      "home": "1",
+      "away": "2"
     },
     "red_cards": {
       "home": "-",
       "away": "-"
     }
   },
-  "post_text": "#RomaAtalanta 1:1 (Statistiche 1T)\nTiri: 8 - 3\nTiri nello specchio: 6 - 2\nxG: 0.59 - 0.52\nxG in porta: 6.00 - 2.00\nPossesso: 62% - 38%\nPrecisione: 87% - 74%\nGrandi Occasioni: 3 - 1\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
+  "post_text": "#RomaAtalanta 1:1\nTiri: 19 - 8\nTiri nello specchio: 9 - 2\nxG: 0.90 - 0.68\nxG in porta: 1.82 - 0.44\nPossesso: 53% - 47%\nPrecisione: 86% - 80%\nGrandi Occasioni: 3 - 1\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
 }
