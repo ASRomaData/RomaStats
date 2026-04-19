@@ -361,78 +361,34 @@ def generate_match_card(event, stats, output_path=CARD_FILE, halftime=False):
 
 # --- GitHub image commit ---
 
-def _multipart_post(endpoint, field_name, filename, img_bytes):
-    """Generic multipart POST using stdlib only."""
-    boundary = uuid.uuid4().hex
-    body = (
-        f"--{boundary}\r\n"
-        f'Content-Disposition: form-data; name="{field_name}"; filename="{filename}"\r\n'
-        f"Content-Type: image/png\r\n\r\n"
-    ).encode() + img_bytes + f"\r\n--{boundary}--\r\n".encode()
-    req = urllib.request.Request(
-        endpoint, data=body,
-        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        return resp.read().decode().strip()
-
-def upload_image_public(image_path):
-    """
-    Upload image trying multiple free hosts in order until one works.
-    No account needed. Uses stdlib only.
-    """
+def commit_image_to_github(image_path):
+    """Commit image to GitHub and return raw.githubusercontent.com public URL."""
+    if not GH_TOKEN_BOT or not GH_REPOSITORY:
+        print("GH_TOKEN/GH_REPOSITORY mancanti."); return None
+    owner, repo = GH_REPOSITORY.split("/", 1)
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{image_path}"
+    gh_h = {
+        "Authorization": f"Bearer {GH_TOKEN_BOT}",
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
     with open(image_path, "rb") as f:
-        img_bytes = f.read()
-
-    # 1. catbox.moe — permanent, very reliable
-    try:
-        boundary = uuid.uuid4().hex
-        body = (
-            f"--{boundary}\r\n"
-            f'Content-Disposition: form-data; name="reqtype"\r\n\r\nfileupload\r\n'
-            f"--{boundary}\r\n"
-            f'Content-Disposition: form-data; name="fileToUpload"; filename="match_card.png"\r\n'
-            f"Content-Type: image/png\r\n\r\n"
-        ).encode() + img_bytes + f"\r\n--{boundary}--\r\n".encode()
-        req = urllib.request.Request(
-            "https://catbox.moe/user/api.php", data=body,
-            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            url = resp.read().decode().strip()
-        if url.startswith("https://files.catbox.moe/"):
-            print(f"  Upload catbox.moe OK: {url}")
-            return url
-        print(f"  catbox.moe risposta inattesa: {url}")
-    except Exception as e:
-        print(f"  catbox.moe fallito: {e}")
-
-    # 2. tmpfiles.org — 60min expiry (più che sufficiente per Instagram)
-    try:
-        import json as _json
-        raw = _multipart_post("https://tmpfiles.org/api/v1/upload", "file", "match_card.png", img_bytes)
-        data = _json.loads(raw)
-        page_url = data.get("data", {}).get("url", "")
-        # tmpfiles.org returns page URL; direct download URL adds /dl/ segment
-        if page_url:
-            dl_url = page_url.replace("tmpfiles.org/", "tmpfiles.org/dl/")
-            print(f"  Upload tmpfiles.org OK: {dl_url}")
-            return dl_url
-    except Exception as e:
-        print(f"  tmpfiles.org fallito: {e}")
-
-    # 3. 0x0.st — fallback
-    try:
-        url = _multipart_post("https://0x0.st", "file", "match_card.png", img_bytes)
-        if url.startswith("http"):
-            print(f"  Upload 0x0.st OK: {url}")
-            return url
-    except Exception as e:
-        print(f"  0x0.st fallito: {e}")
-
-    print("  Tutti gli upload falliti.")
+        content_b64 = base64.b64encode(f.read()).decode()
+    get_res = curl_requests.get(api_url, headers=gh_h, timeout=15)
+    sha = get_res.json().get("sha") if get_res.status_code == 200 else None
+    body = json.dumps({
+        "message": "Update match card [skip ci]",
+        "content": content_b64,
+        "branch": "main",
+        **({"sha": sha} if sha else {})
+    }).encode()
+    put_res = curl_requests.put(api_url, headers=gh_h, data=body, timeout=30)
+    if put_res.status_code in (200, 201):
+        raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{image_path}"
+        print(f"  Immagine committata: {raw_url}")
+        return raw_url
+    print(f"  Errore commit GitHub: {put_res.status_code} {put_res.text[:200]}")
     return None
 
 def post_to_instagram(image_url,caption):
@@ -459,49 +415,6 @@ def post_to_instagram(image_url,caption):
 
 # --- Bluesky ---
 
-def post_to_bluesky(text):
-    if not BSKY_HANDLE or not BSKY_PASSWORD:
-        print("Credenziali Bluesky mancanti, skip."); return False
-    try:
-        client=Client(); client.login(BSKY_HANDLE.strip(),BSKY_PASSWORD.strip())
-        post=client.send_post(text); post_id=post.uri.split("/")[-1]
-        print(f"Bluesky OK: https://bsky.app/profile/{BSKY_HANDLE}/post/{post_id}"); return True
-    except Exception as e:
-        print(f"Errore Bluesky: {e}"); return False
-
-# --- Dashboard ---
-
-def save_dashboard_data(event,stats,post_text,published_bsky,published_ig,force_mode,halftime=False):
-    h_score=event.get("homeScore",{}).get("display",0); a_score=event.get("awayScore",{}).get("display",0)
-    start_ts=event.get("startTimestamp",0)
-    data={
-        "last_updated":datetime.now(timezone.utc).isoformat(),"force_mode":force_mode,
-        "halftime_mode":halftime,"published":published_bsky,"published_ig":published_ig,
-        "match":{"id":event["id"],"home":event["homeTeam"]["name"],"away":event["awayTeam"]["name"],
-            "score":f"{h_score}-{a_score}","h_score":h_score,"a_score":a_score,
-            "date":datetime.fromtimestamp(start_ts,tz=timezone.utc).strftime("%d %b %Y %H:%M") if start_ts else "",
-            "tournament":event.get("tournament",{}).get("name","")},
-        "stats":{
-            "total_shots":{"home":sv(stats,"Total shots","home"),"away":sv(stats,"Total shots","away")},
-            "shots_on_target":{"home":sv(stats,"Shots on target","home"),"away":sv(stats,"Shots on target","away")},
-            "expected_goals":{"home":sv(stats,"Expected goals","home"),"away":sv(stats,"Expected goals","away")},
-            "xg_on_target":{"home":calc_xgot(stats,"home",event),"away":calc_xgot(stats,"away",event)},
-            "ball_possession":{"home":sv(stats,"Ball possession","home"),"away":sv(stats,"Ball possession","away")},
-            "passing_precision":{"home":calc_precision(stats,"home"),"away":calc_precision(stats,"away")},
-            "big_chances":{"home":sv(stats,"Big chances","home"),"away":sv(stats,"Big chances","away")},
-            "accurate_passes":{"home":sv(stats,"Accurate passes","home"),"away":sv(stats,"Accurate passes","away")},
-            "fouls":{"home":sv(stats,"Fouls","home"),"away":sv(stats,"Fouls","away")},
-            "corner_kicks":{"home":sv(stats,"Corner kicks","home"),"away":sv(stats,"Corner kicks","away")},
-            "yellow_cards":{"home":sv(stats,"Yellow cards","home"),"away":sv(stats,"Yellow cards","away")},
-            "red_cards":{"home":sv(stats,"Red cards","home"),"away":sv(stats,"Red cards","away")},
-        },
-        "post_text":post_text,
-    }
-    with open(DATA_FILE,"w",encoding="utf-8") as f:
-        json.dump(data,f,ensure_ascii=False,indent=2)
-    print("dashboard_data.json aggiornato")
-
-# --- IG flow ---
 
 def publish_to_instagram(match, stats, halftime=False):
     print("\n--- INSTAGRAM ---")
@@ -509,10 +422,12 @@ def publish_to_instagram(match, stats, halftime=False):
     print(f"Caption ({len(ig_caption)} chars):\n{ig_caption}\n")
     if not generate_match_card(match, stats, halftime=halftime):
         print("  Generazione card fallita, skip Instagram."); return False
-    image_url = upload_image_public(CARD_FILE)
-    if not image_url:
-        print("  Upload immagine fallito, skip Instagram."); return False
-    return post_to_instagram(image_url, ig_caption)
+    raw_url = commit_image_to_github(CARD_FILE)
+    if not raw_url:
+        print("  Commit immagine fallito, skip Instagram."); return False
+    print("  Attendo 20s propagazione GitHub CDN...")
+    time.sleep(20)
+    return post_to_instagram(raw_url, ig_caption)
 
 # --- Main ---
 
