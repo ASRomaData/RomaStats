@@ -1,8 +1,8 @@
 {
-  "last_updated": "2026-04-18T22:41:48.628523+00:00",
+  "last_updated": "2026-04-19T09:28:32.409607+00:00",
   "force_mode": true,
   "halftime_mode": false,
-  "published": true,
+  "published": false,
   "published_ig": false,
   "match": {
     "id": 13980102,
@@ -24,11 +24,11 @@
       "away": "2"
     },
     "expected_goals": {
-      "home": "0.90",
+      "home": "1.07",
       "away": "0.68"
     },
     "xg_on_target": {
-      "home": "1.82",
+      "home": "1.99",
       "away": "0.44"
     },
     "ball_possession": {
@@ -37,14 +37,14 @@
     },
     "passing_precision": {
       "home": "86%",
-      "away": "80%"
+      "away": "81%"
     },
     "big_chances": {
-      "home": "3",
+      "home": "1",
       "away": "1"
     },
     "accurate_passes": {
-      "home": "459",
+      "home": "462",
       "away": "394"
     },
     "fouls": {
@@ -64,5 +64,5 @@
       "away": "-"
     }
   },
-  "post_text": "#RomaAtalanta 1:1\nTiri: 19 - 8\nTiri nello specchio: 9 - 2\nxG: 0.90 - 0.68\nxG in porta: 1.82 - 0.44\nPossesso: 53% - 47%\nPrecisione: 86% - 80%\nGrandi Occasioni: 3 - 1\n\n#Roma #SerieA #ASRoma #ForzaRoma #SofaScore"
+  "post_text": "#RomaAtalanta 1:1\nTiri 19-8\nTiri nello specchio 9-2\nxG 1.07-0.68\nxG in porta 1.99-0.44\nPossesso 53% - 47%\nPrecisione 86% - 81%\nGrandi Occasioni 1 - 1\n\n#Roma #SerieA #ASRoma #ForzaRoma"
 }
