@@ -264,7 +264,7 @@ def format_post_bluesky(event, stats, halftime=False):
     h_score = event.get("homeScore", {}).get("display", "?")
     a_score = event.get("awayScore", {}).get("display", "?")
     label   = "Statistiche 1T" if halftime else ""
-    prefix  = f"#{home.replace(' ','')+away.replace(' ','')} {h_score}:{a_score}"
+    prefix  = f"#{home.replace(' ','')+away.replace(' ','')} {h_score}-{a_score}"
     if label:
         prefix += f" ({label})"
 
@@ -281,8 +281,7 @@ def format_post_bluesky(event, stats, halftime=False):
 
     lines = [
         prefix,
-        f"Tiri {sv(stats,'Total shots','home')}-{sv(stats,'Total shots','away')}",
-        f"Tiri nello specchio {sv(stats,'Shots on target','home')}-{sv(stats,'Shots on target','away')}",
+        f"Tiri (nello specchio) {sv(stats,'Total shots','home')}({sv(stats,'Shots on target','home')})-{sv(stats,'Total shots','away')}({sv(stats,'Shots on target','away')})",
         f"xG {xgh}-{xga}" if xgh != "-" else None,
         f"xG in porta {xgoth}-{xgota}",
         f"Possesso {sv(stats,'Ball possession','home')} - {sv(stats,'Ball possession','away')}",
