@@ -374,6 +374,7 @@ def commit_image_to_github(image_path):
         "Accept": "application/vnd.github+json",
         "Content-Type": "application/json",
         "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "RomaStatsBot/1.0",
     }
     with open(image_path, "rb") as f:
         content_b64 = base64.b64encode(f.read()).decode()
