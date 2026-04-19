@@ -49,7 +49,7 @@ def load_last_posted():
             return d.get("last_event_id"), d.get("last_halftime_id"), d.get("last_ig_id")
     return None, None, None
 
-def save_last_posted(event_id=None, halftime_id=None):
+def save_last_posted(event_id=None, halftime_id=None, ig_id=None):
     existing = {}
     if os.path.exists(POSTED_FILE):
         with open(POSTED_FILE, "r") as f:
@@ -59,6 +59,8 @@ def save_last_posted(event_id=None, halftime_id=None):
         existing["posted_at"] = datetime.now(timezone.utc).isoformat()
     if halftime_id:
         existing["last_halftime_id"] = halftime_id
+    if ig_id:
+        existing["last_ig_id"] = ig_id
     with open(POSTED_FILE, "w") as f:
         json.dump(existing, f)
 
@@ -415,6 +417,49 @@ def post_to_instagram(image_url,caption):
 
 # --- Bluesky ---
 
+def post_to_bluesky(text):
+    if not BSKY_HANDLE or not BSKY_PASSWORD:
+        print("Credenziali Bluesky mancanti, skip."); return False
+    try:
+        client=Client(); client.login(BSKY_HANDLE.strip(),BSKY_PASSWORD.strip())
+        post=client.send_post(text); post_id=post.uri.split("/")[-1]
+        print(f"Bluesky OK: https://bsky.app/profile/{BSKY_HANDLE}/post/{post_id}"); return True
+    except Exception as e:
+        print(f"Errore Bluesky: {e}"); return False
+
+# --- Dashboard ---
+
+def save_dashboard_data(event,stats,post_text,published_bsky,published_ig,force_mode,halftime=False):
+    h_score=event.get("homeScore",{}).get("display",0); a_score=event.get("awayScore",{}).get("display",0)
+    start_ts=event.get("startTimestamp",0)
+    data={
+        "last_updated":datetime.now(timezone.utc).isoformat(),"force_mode":force_mode,
+        "halftime_mode":halftime,"published":published_bsky,"published_ig":published_ig,
+        "match":{"id":event["id"],"home":event["homeTeam"]["name"],"away":event["awayTeam"]["name"],
+            "score":f"{h_score}-{a_score}","h_score":h_score,"a_score":a_score,
+            "date":datetime.fromtimestamp(start_ts,tz=timezone.utc).strftime("%d %b %Y %H:%M") if start_ts else "",
+            "tournament":event.get("tournament",{}).get("name","")},
+        "stats":{
+            "total_shots":{"home":sv(stats,"Total shots","home"),"away":sv(stats,"Total shots","away")},
+            "shots_on_target":{"home":sv(stats,"Shots on target","home"),"away":sv(stats,"Shots on target","away")},
+            "expected_goals":{"home":sv(stats,"Expected goals","home"),"away":sv(stats,"Expected goals","away")},
+            "xg_on_target":{"home":calc_xgot(stats,"home",event),"away":calc_xgot(stats,"away",event)},
+            "ball_possession":{"home":sv(stats,"Ball possession","home"),"away":sv(stats,"Ball possession","away")},
+            "passing_precision":{"home":calc_precision(stats,"home"),"away":calc_precision(stats,"away")},
+            "big_chances":{"home":sv(stats,"Big chances","home"),"away":sv(stats,"Big chances","away")},
+            "accurate_passes":{"home":sv(stats,"Accurate passes","home"),"away":sv(stats,"Accurate passes","away")},
+            "fouls":{"home":sv(stats,"Fouls","home"),"away":sv(stats,"Fouls","away")},
+            "corner_kicks":{"home":sv(stats,"Corner kicks","home"),"away":sv(stats,"Corner kicks","away")},
+            "yellow_cards":{"home":sv(stats,"Yellow cards","home"),"away":sv(stats,"Yellow cards","away")},
+            "red_cards":{"home":sv(stats,"Red cards","home"),"away":sv(stats,"Red cards","away")},
+        },
+        "post_text":post_text,
+    }
+    with open(DATA_FILE,"w",encoding="utf-8") as f:
+        json.dump(data,f,ensure_ascii=False,indent=2)
+    print("dashboard_data.json aggiornato")
+
+# --- IG flow ---
 
 def publish_to_instagram(match, stats, halftime=False):
     print("\n--- INSTAGRAM ---")
@@ -451,24 +496,20 @@ def main():
                 stats[key] = stats_all[key]
         _,last_ht_id,last_ig_ht=load_last_posted()
         ht_key=f"ht_{match['id']}"
-        if last_ht_id==ht_key and last_ig_ht==ht_key:
-            print("Statistiche intervallo già postate (Bluesky+IG), skip."); return
-        skip_bsky = (last_ht_id==ht_key)
-        skip_ig = (last_ig_ht==ht_key)
+        skip_bsky_ht=(last_ht_id==ht_key)
+        skip_ig_ht=(last_ig_ht==ht_key)
+        if skip_bsky_ht and skip_ig_ht:
+            print("Intervallo già postato (Bluesky+IG), skip."); return
         bsky_text=format_post_bluesky(match,stats,halftime=True)
         print(f"\n--- BLUESKY ---\n{bsky_text}\n")
-        published_bsky = False if skip_bsky else post_to_bluesky(bsky_text)
-        if skip_bsky:
-            print("Bluesky intervallo già postato, skip.")
+        published_bsky = False if skip_bsky_ht else post_to_bluesky(bsky_text)
+        if skip_bsky_ht: print("Bluesky intervallo già postato, skip.")
         published_ig = False
-        if not skip_ig and IG_USER_ID and IG_TOKEN:
+        if not skip_ig_ht and IG_USER_ID and IG_TOKEN:
             published_ig=publish_to_instagram(match,stats,halftime=True)
-        elif skip_ig:
-            print("IG intervallo già postato, skip.")
-        if published_bsky:
-            save_last_posted(halftime_id=ht_key)
-        if published_ig:
-            save_last_posted(ig_id=ht_key)
+        elif skip_ig_ht: print("IG intervallo già postato, skip.")
+        if published_bsky: save_last_posted(halftime_id=ht_key)
+        if published_ig:   save_last_posted(ig_id=ht_key)
         save_dashboard_data(match,stats,bsky_text,published_bsky,published_ig,False,halftime=True)
         print("Done."); return
 
@@ -487,9 +528,9 @@ def main():
     if not match:
         print(f"Nessuna partita negli ultimi {FORCE_MAX_DAYS}gg." if FORCE_MODE else "Nessuna partita terminata nella finestra."); return
     last_id,_,last_ig_id=load_last_posted()
-    match_id = str(match.get("id"))
+    match_id=str(match.get("id"))
     skip_bsky = (not FORCE_MODE and match_id==str(last_id))
-    skip_ig = (not FORCE_MODE and match_id==str(last_ig_id))
+    skip_ig   = (not FORCE_MODE and match_id==str(last_ig_id))
     if skip_bsky and skip_ig:
         print("Partita già postata (Bluesky+IG), skip."); return
     stats=get_all_stats(match["id"])
@@ -498,19 +539,14 @@ def main():
     bsky_text=format_post_bluesky(match,stats)
     print(f"\n--- BLUESKY ---\n{bsky_text}\n")
     published_bsky = False if skip_bsky else post_to_bluesky(bsky_text)
-    if skip_bsky:
-        print("Bluesky già postato, skip.")
+    if skip_bsky: print("Bluesky già postato, skip.")
     published_ig = False
     if not skip_ig and IG_USER_ID and IG_TOKEN:
         published_ig=publish_to_instagram(match,stats,halftime=False)
-    elif skip_ig:
-        print("IG già postato, skip.")
-    elif not IG_USER_ID or not IG_TOKEN:
-        print("Instagram non configurato, skip.")
-    if published_bsky and not FORCE_MODE:
-        save_last_posted(event_id=match_id)
-    if published_ig and not FORCE_MODE:
-        save_last_posted(ig_id=match_id)
+    elif skip_ig: print("IG già postato, skip.")
+    elif not IG_USER_ID or not IG_TOKEN: print("Instagram non configurato, skip.")
+    if published_bsky and not FORCE_MODE: save_last_posted(event_id=match_id)
+    if published_ig   and not FORCE_MODE: save_last_posted(ig_id=match_id)
     save_dashboard_data(match,stats,bsky_text,published_bsky,published_ig,FORCE_MODE)
     print("Done.")
 
