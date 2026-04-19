@@ -241,13 +241,13 @@ def build_stats_lines(event, stats, halftime=False):
     bca   = sv(stats, "Big chances",    "away")
 
     lines = [
-        f"\U0001f7e1\U0001f534 {label}: {home} {h_score}-{a_score} {away}",
+        f"\U0001f7e1\U0001f534 {label}: #{home}{away} {h_score}-{a_score}",
         f"\U0001f3c6 {tourney}" if tourney else "",
         "",
         f"\u26bd Tiri (nello specchio): {sv(stats,'Total shots','home')} ({sv(stats,'Shots on target','home')}) - {sv(stats,'Total shots','away')} ({sv(stats,'Shots on target','away')})",
     ]
     if xgh != "-":
-        lines.append(f"\U0001f4ca xG: {xgh} - {xga}  |  xG in porta: {xgoth} - {xgota}")
+        lines.append(f"\U0001f4ca xG: {xgh}-{xga} | xG in porta: {xgoth}-{xgota}")
     else:
         lines.append(f"\U0001f4ca xG in porta: {xgoth} - {xgota}")
     lines += [
