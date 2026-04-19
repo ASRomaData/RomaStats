@@ -46,8 +46,8 @@ def load_last_posted():
     if os.path.exists(POSTED_FILE):
         with open(POSTED_FILE, "r") as f:
             d = json.load(f)
-            return d.get("last_event_id"), d.get("last_halftime_id")
-    return None, None
+            return d.get("last_event_id"), d.get("last_halftime_id"), d.get("last_ig_id")
+    return None, None, None
 
 def save_last_posted(event_id=None, halftime_id=None):
     existing = {}
